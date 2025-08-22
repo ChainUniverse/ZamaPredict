@@ -74,7 +74,7 @@ const EventCard: React.FC<EventCardProps> = ({ event, onBet, onResolve }) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 mb-4">
+      {/* <div className="grid grid-cols-2 gap-4 mb-4">
         <div className="text-sm">
           <div className="flex items-center space-x-1 text-white/60 mb-1">
             <span>YES Price</span>
@@ -87,22 +87,30 @@ const EventCard: React.FC<EventCardProps> = ({ event, onBet, onResolve }) => {
           </div>
           <div className="text-white">{formatEther(event.priceNo)} ETH</div>
         </div>
-      </div>
+      </div> */}
 
       <div className="grid grid-cols-2 gap-4 mb-4">
         <div className="text-sm">
           <div className="flex items-center space-x-1 text-white/60 mb-1">
-            <span className="text-yellow-400">🔒</span>
+            <span className={event.resolved && event.decryptionDone ? "text-green-400" : "text-yellow-400"}>
+              {event.resolved && event.decryptionDone ? "🔓" : "🔒"}
+            </span>
             <span>YES Total</span>
           </div>
-          <div className="text-yellow-400 font-semibold">***</div>
+          <div className={`font-semibold ${event.resolved && event.decryptionDone ? 'text-green-400' : 'text-yellow-400'}`}>
+            {event.resolved && event.decryptionDone ? `${event.decryptedYes}` : "***"}
+          </div>
         </div>
         <div className="text-sm">
           <div className="flex items-center space-x-1 text-white/60 mb-1">
-            <span className="text-yellow-400">🔒</span>
+            <span className={event.resolved && event.decryptionDone ? "text-green-400" : "text-yellow-400"}>
+              {event.resolved && event.decryptionDone ? "🔓" : "🔒"}
+            </span>
             <span>NO Total</span>
           </div>
-          <div className="text-yellow-400 font-semibold">***</div>
+          <div className={`font-semibold ${event.resolved && event.decryptionDone ? 'text-green-400' : 'text-yellow-400'}`}>
+            {event.resolved && event.decryptionDone ? `${event.decryptedNo}` : "***"}
+          </div>
         </div>
       </div>
 
@@ -122,14 +130,9 @@ const EventCard: React.FC<EventCardProps> = ({ event, onBet, onResolve }) => {
           <div className="flex items-center space-x-2">
             <CheckCircle className="w-5 h-5 text-purple-400" />
             <span className="text-purple-200 font-medium">
-              Resolved: {event.outcome ? 'YES' : 'NO'} won
+              Resolved Result: {event.outcome ? 'YES' : 'NO'} won
             </span>
           </div>
-          {event.decryptionDone && (
-            <div className="mt-2 text-sm text-purple-100/80">
-              YES Total: {event.decryptedYes} • NO Total: {event.decryptedNo}
-            </div>
-          )}
         </div>
       )}
 

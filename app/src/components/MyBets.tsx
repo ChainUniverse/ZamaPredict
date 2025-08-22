@@ -11,8 +11,10 @@ import LoadingSpinner from './LoadingSpinner';
 interface DecryptedData {
   shares?: number;
   direction?: boolean;
-  isDecrypting?: boolean;
-  error?: string;
+  isDecryptingShares?: boolean;
+  isDecryptingDirection?: boolean;
+  sharesError?: string;
+  directionError?: string;
 }
 
 const MyBets: React.FC = () => {
@@ -22,7 +24,7 @@ const MyBets: React.FC = () => {
   const { claimWinnings, isLoading: isClaimingRewards } = useContractWrite();
   const [decryptedBets, setDecryptedBets] = useState<Record<string, DecryptedData>>({});
 
-  const handleDecryptBet = async (bet: any) => {
+  const handleDecryptDirection = async (bet: any) => {
     if (!walletClient) {
       console.error('Wallet not connected');
       return;
@@ -32,43 +34,101 @@ const MyBets: React.FC = () => {
     
     // If already decrypted, hide the data
     if (decryptedBets[betKey]?.direction !== undefined) {
-      setDecryptedBets(prev => {
-        const newState = { ...prev };
-        delete newState[betKey];
-        return newState;
-      });
+      setDecryptedBets(prev => ({
+        ...prev,
+        [betKey]: {
+          ...prev[betKey],
+          direction: undefined,
+          directionError: undefined
+        }
+      }));
       return;
     }
     
     // Set loading state
     setDecryptedBets(prev => ({
       ...prev,
-      [betKey]: { isDecrypting: true }
+      [betKey]: { 
+        ...prev[betKey],
+        isDecryptingDirection: true 
+      }
     }));
 
     try {
-      // Decrypt both shares and direction
-      const [decryptedShares, decryptedDirection] = await Promise.all([
-        userDecryptEuint32(bet.shares, DEFAULT_CONTRACT_ADDRESS, walletClient),
-        userDecryptEbool(bet.isYes, DEFAULT_CONTRACT_ADDRESS, walletClient)
-      ]);
+      const decryptedDirection = await userDecryptEbool(bet.isYes, DEFAULT_CONTRACT_ADDRESS, walletClient);
 
       // Update decrypted data
       setDecryptedBets(prev => ({
         ...prev,
         [betKey]: {
-          shares: decryptedShares,
+          ...prev[betKey],
           direction: decryptedDirection,
-          isDecrypting: false
+          isDecryptingDirection: false
         }
       }));
     } catch (error: any) {
-      console.error('Failed to decrypt bet:', error);
+      console.error('Failed to decrypt direction:', error);
       setDecryptedBets(prev => ({
         ...prev,
         [betKey]: {
-          isDecrypting: false,
-          error: error.message || 'Decryption failed'
+          ...prev[betKey],
+          isDecryptingDirection: false,
+          directionError: error.message || 'Decryption failed'
+        }
+      }));
+    }
+  };
+
+  const handleDecryptShares = async (bet: any) => {
+    if (!walletClient) {
+      console.error('Wallet not connected');
+      return;
+    }
+
+    const betKey = `${bet.eventId}-${bet.txHash}`;
+    
+    // If already decrypted, hide the data
+    if (decryptedBets[betKey]?.shares !== undefined) {
+      setDecryptedBets(prev => ({
+        ...prev,
+        [betKey]: {
+          ...prev[betKey],
+          shares: undefined,
+          sharesError: undefined
+        }
+      }));
+      return;
+    }
+    
+    // Set loading state
+    setDecryptedBets(prev => ({
+      ...prev,
+      [betKey]: { 
+        ...prev[betKey],
+        isDecryptingShares: true 
+      }
+    }));
+
+    try {
+      const decryptedShares = await userDecryptEuint32(bet.shares, DEFAULT_CONTRACT_ADDRESS, walletClient);
+
+      // Update decrypted data
+      setDecryptedBets(prev => ({
+        ...prev,
+        [betKey]: {
+          ...prev[betKey],
+          shares: decryptedShares,
+          isDecryptingShares: false
+        }
+      }));
+    } catch (error: any) {
+      console.error('Failed to decrypt shares:', error);
+      setDecryptedBets(prev => ({
+        ...prev,
+        [betKey]: {
+          ...prev[betKey],
+          isDecryptingShares: false,
+          sharesError: error.message || 'Decryption failed'
         }
       }));
     }
@@ -246,11 +306,11 @@ const MyBets: React.FC = () => {
                         </span>
                       </div>
                       <button
-                        onClick={() => handleDecryptBet(bet)}
-                        disabled={decryptedBets[`${bet.eventId}-${bet.txHash}`]?.isDecrypting}
+                        onClick={() => handleDecryptDirection(bet)}
+                        disabled={decryptedBets[`${bet.eventId}-${bet.txHash}`]?.isDecryptingDirection}
                         className="text-xs text-blue-400 hover:text-blue-300 transition-colors flex items-center space-x-1"
                       >
-                        {decryptedBets[`${bet.eventId}-${bet.txHash}`]?.isDecrypting ? (
+                        {decryptedBets[`${bet.eventId}-${bet.txHash}`]?.isDecryptingDirection ? (
                           <>
                             <LoadingSpinner />
                             <span>Decrypting...</span>
@@ -274,7 +334,7 @@ const MyBets: React.FC = () => {
                           ? 'text-green-400' : 'text-red-400')
                         : 'text-yellow-400'
                     }`}>
-                      {decryptedBets[`${bet.eventId}-${bet.txHash}`]?.error ? (
+                      {decryptedBets[`${bet.eventId}-${bet.txHash}`]?.directionError ? (
                         <span className="text-red-400 text-xs">Decryption failed</span>
                       ) : decryptedBets[`${bet.eventId}-${bet.txHash}`]?.direction !== undefined ? (
                         <div className="flex items-center space-x-1">
@@ -304,16 +364,42 @@ const MyBets: React.FC = () => {
                   </div>
 
                   <div className="bg-white/5 rounded-lg p-3">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <span className="text-yellow-400">🔒</span>
-                      <span className="text-sm text-white/60">Shares</span>
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-yellow-400">🔒</span>
+                        <span className="text-sm text-white/60">Shares</span>
+                      </div>
+                      <button
+                        onClick={() => handleDecryptShares(bet)}
+                        disabled={decryptedBets[`${bet.eventId}-${bet.txHash}`]?.isDecryptingShares}
+                        className="text-xs text-blue-400 hover:text-blue-300 transition-colors flex items-center space-x-1"
+                      >
+                        {decryptedBets[`${bet.eventId}-${bet.txHash}`]?.isDecryptingShares ? (
+                          <>
+                            <LoadingSpinner />
+                            <span>Decrypting...</span>
+                          </>
+                        ) : decryptedBets[`${bet.eventId}-${bet.txHash}`]?.shares !== undefined ? (
+                          <>
+                            <EyeOff className="w-3 h-3" />
+                            <span>Hide</span>
+                          </>
+                        ) : (
+                          <>
+                            <Eye className="w-3 h-3" />
+                            <span>Decrypt</span>
+                          </>
+                        )}
+                      </button>
                     </div>
                     <div className={`font-semibold truncate ${
                       decryptedBets[`${bet.eventId}-${bet.txHash}`]?.shares !== undefined 
                         ? 'text-white' 
                         : 'text-yellow-400'
                     }`}>
-                      {decryptedBets[`${bet.eventId}-${bet.txHash}`]?.shares !== undefined 
+                      {decryptedBets[`${bet.eventId}-${bet.txHash}`]?.sharesError ? (
+                        <span className="text-red-400 text-xs">Decryption failed</span>
+                      ) : decryptedBets[`${bet.eventId}-${bet.txHash}`]?.shares !== undefined 
                         ? decryptedBets[`${bet.eventId}-${bet.txHash}`]?.shares 
                         : '***'
                       }
@@ -323,7 +409,7 @@ const MyBets: React.FC = () => {
                   <div className="bg-white/5 rounded-lg p-3">
                     {bet.event?.resolved && (
                       <>
-                        <div className="text-sm text-white/60 mb-1">Outcome</div>
+                        <div className="text-sm text-white/60 mb-1">Final Result</div>
                         <div className={`font-semibold flex items-center space-x-1 ${
                           bet.event.outcome ? 'text-green-400' : 'text-red-400'
                         }`}>

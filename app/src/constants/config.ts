@@ -126,7 +126,6 @@ export const PREDICTION_MARKET_ABI = [
     "outputs": [
       {
         "components": [
-          { "internalType": "euint64", "name": "amount", "type": "bytes32" },
           { "internalType": "euint32", "name": "shares", "type": "bytes32" },
           { "internalType": "ebool", "name": "isYes", "type": "bytes32" },
           { "internalType": "bool", "name": "placed", "type": "bool" },
@@ -188,7 +187,7 @@ export const PREDICTION_MARKET_ABI = [
 ] as const;
 
 // Default contract address (update after deployment)
-export const DEFAULT_CONTRACT_ADDRESS = "0x1576cBab1c2Dc2792fD51aE0e0a2a4F332b7B27C";
+export const DEFAULT_CONTRACT_ADDRESS = "0x4194003193F535d97fdca1a31778FBBCbf5e98dC";
 
 // UI Constants
 export const UI_CONFIG = {

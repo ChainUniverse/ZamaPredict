@@ -157,13 +157,13 @@ task("prediction:get-user-bet")
     if (bet.placed) {
       // Decrypt the encrypted values for the user
       try {
-        const decryptedAmount = await fhevm.userDecryptEuint(
-          FhevmType.euint64,
-          bet.amount,
-          predictionMarketDeployment.address,
-          signer
-        );
-        console.log("Bet amount:", decryptedAmount.toString(), "wei");
+        // const decryptedAmount = await fhevm.userDecryptEuint(
+        //   FhevmType.euint64,
+        //   bet.amount,
+        //   predictionMarketDeployment.address,
+        //   signer
+        // );
+        // console.log("Bet amount:", decryptedAmount.toString(), "wei");
 
         const decryptedShares = await fhevm.userDecryptEuint(
           FhevmType.euint32,
@@ -181,7 +181,7 @@ task("prediction:get-user-bet")
         console.log("Direction:", decryptedDirection ? "YES" : "NO");
       } catch (error) {
         console.log("Note: Could not decrypt values (may not have permission)");
-        console.log("Encrypted amount handle:", bet.amount);
+        // console.log("Encrypted amount handle:", bet.amount);
         console.log("Encrypted shares handle:", bet.shares);
         console.log("Encrypted direction handle:", bet.isYes);
       }

@@ -71,7 +71,7 @@ export const decryptUserData = async (
       handle: encryptedHandle,
       contractAddress
     }];
-    
+
     const startTimeStamp = Math.floor(Date.now() / 1000).toString();
     const durationDays = "10";
     const contractAddresses = [contractAddress];
@@ -83,13 +83,22 @@ export const decryptUserData = async (
       durationDays
     );
 
-    const signature = await signer.signTypedData(
-      eip712.domain,
-      {
+    // const signature = await signer.signTypedData(
+    //   eip712.domain,
+    //   {
+    //     UserDecryptRequestVerification: eip712.types.UserDecryptRequestVerification,
+    //   },
+    //   eip712.message
+    // );
+
+    const signature = await signer.signTypedData({
+      domain: eip712.domain,
+      types: {
         UserDecryptRequestVerification: eip712.types.UserDecryptRequestVerification,
       },
-      eip712.message
-    );
+      primaryType: 'UserDecryptRequestVerification',
+      message: eip712.message,
+    });
 
     const result = await instance.userDecrypt(
       handleContractPairs,
@@ -212,7 +221,7 @@ export const useFHE = () => {
 
   const initialize = async () => {
     if (instance) return instance;
-    
+
     try {
       const fheInstance = await initializeFHE();
       setInstance(fheInstance);

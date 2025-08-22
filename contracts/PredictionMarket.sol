@@ -30,7 +30,6 @@ contract PredictionMarket is SepoliaConfig {
     /// @notice Represents a user's bet on a specific event
     /// @dev All bet details are encrypted to maintain privacy
     struct Bet {
-        euint64 amount; // Encrypted amount of ETH wagered
         euint32 shares; // Encrypted number of shares purchased (for future use)
         ebool isYes; // Encrypted bet direction (true = YES, false = NO)
         bool placed; // Whether this bet has been placed (prevents double betting)
@@ -136,28 +135,25 @@ contract PredictionMarket is SepoliaConfig {
         // Convert external encrypted inputs to internal encrypted types
         euint32 userShares = FHE.fromExternal(shares, proof);
         ebool userIsYes = FHE.fromExternal(isYes, proof);
-        euint64 userAmount = FHE.asEuint64(uint64(msg.value));
+        // euint64 userAmount = FHE.asEuint64(uint64(msg.value));
 
         // Store encrypted bet details
         bets[eventId][msg.sender] = Bet({
-            amount: userAmount, 
-            shares: userShares, 
-            isYes: userIsYes, 
+            shares: userShares,
+            isYes: userIsYes,
             placed: true,
             actualEthAmount: msg.value
         });
 
         // Update totals based on encrypted bet direction without revealing which side was chosen
-        euint64 addYes = FHE.select(userIsYes, userAmount, FHE.asEuint64(0)); // Add to YES if isYes=true, else 0
-        euint64 addNo = FHE.select(userIsYes, FHE.asEuint64(0), userAmount); // Add to NO if isYes=false, else 0
+        euint32 addYes = FHE.select(userIsYes, userShares, FHE.asEuint32(0)); // Add to YES if isYes=true, else 0
+        euint32 addNo = FHE.select(userIsYes, FHE.asEuint32(0), userShares); // Add to NO if isYes=false, else 0
 
         ev.totalYes = FHE.add(ev.totalYes, addYes);
         ev.totalNo = FHE.add(ev.totalNo, addNo);
         ev.totalEth += msg.value; // Public total for transparency
 
         // Set ACL permissions for encrypted values
-        FHE.allowThis(userAmount); // Contract needs access
-        FHE.allow(userAmount, msg.sender); // User needs access for decryption
         FHE.allowThis(userShares);
         FHE.allow(userShares, msg.sender);
         FHE.allowThis(userIsYes);
@@ -230,7 +226,7 @@ contract PredictionMarket is SepoliaConfig {
 
         // Request decryption of user's encrypted bet details
         bytes32[] memory cts = new bytes32[](2);
-        cts[0] = FHE.toBytes32(userBet.amount); // User's bet amount
+        cts[0] = FHE.toBytes32(userBet.shares); // User's bet amount
         // Convert boolean bet direction to integer for decryption (1 = YES, 0 = NO)
         cts[1] = FHE.toBytes32(FHE.select(userBet.isYes, FHE.asEuint32(1), FHE.asEuint32(0)));
 
@@ -245,10 +241,10 @@ contract PredictionMarket is SepoliaConfig {
     /// @notice Callback function called by KMS after decrypting user's bet details
     /// @dev Calculates and distributes winnings based on the decrypted bet information
     /// @param reqId The request ID from the original decryption request
-    /// @param amount Decrypted amount the user wagered
+    /// @param shares Decrypted shares the user wagered
     /// @param isYesNum Decrypted bet direction as number (1 = YES, 0 = NO)
     /// @param sigs Cryptographic signatures proving the decryption is valid
-    function userBetCallback(uint256 reqId, uint256 amount, uint256 isYesNum, bytes[] memory sigs) public {
+    function userBetCallback(uint256 reqId, uint256 shares, uint256 isYesNum, bytes[] memory sigs) public {
         // Verify that the decryption results are authentic
         FHE.checkSignatures(reqId, sigs);
 
@@ -269,7 +265,7 @@ contract PredictionMarket is SepoliaConfig {
             if (winTotal > 0) {
                 // Payout formula: user's bet + (user's bet * losing total / winning total)
                 // This gives the user their original bet plus a proportional share of the losing side's ETH
-                uint256 winAmount = amount + (amount * loseTotal) / winTotal;
+                uint256 winAmount = shares + (shares * loseTotal) / winTotal;
 
                 // Update user's encrypted rewards balance
                 // rewards[user] = FHE.add(rewards[user], FHE.asEuint64(uint64(winAmount)));
