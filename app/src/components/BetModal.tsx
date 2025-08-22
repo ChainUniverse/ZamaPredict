@@ -36,11 +36,12 @@ const BetModal: React.FC<BetModalProps> = ({ event, isOpen, onClose, onBetSucces
       setIsPlacingBet(true);
       
       // Convert bet amount to wei
-      const amountInWei = parseEther(betAmount);
-      
+
+      const shares = BigInt(betAmount);
       // Calculate encrypted shares based on direction and price
       const price = selectedDirection === 'yes' ? event.priceYes : event.priceNo;
-      const shares = (amountInWei * BigInt(10000)) / price; // Calculate shares with precision
+      // const shares = (amountInWei * BigInt(10000)) / price; // Calculate shares with precision
+      const amountInWei = (shares)*price;
 
       await placeBet(
         event.id,
@@ -65,8 +66,8 @@ const BetModal: React.FC<BetModalProps> = ({ event, isOpen, onClose, onBetSucces
     try {
       const amount = parseFloat(betAmount);
       const price = parseFloat(formatEther(selectedDirection === 'yes' ? event.priceYes : event.priceNo));
-      const shares = amount / price;
-      return shares.toFixed(4);
+      const shares = amount * price;
+      return shares.toFixed(4)+"ETH";
     } catch {
       return '0';
     }
@@ -156,16 +157,16 @@ const BetModal: React.FC<BetModalProps> = ({ event, isOpen, onClose, onBetSucces
           {/* Amount Input */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-white">
-              Bet Amount (ETH)
+              Bet Shares(Amount)
             </label>
             <input
               type="number"
-              step="0.001"
-              min="0"
+              step="1"
+              min="1"
               value={betAmount}
               onChange={(e) => setBetAmount(e.target.value)}
               className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:border-blue-500"
-              placeholder="0.1"
+              placeholder="1"
             />
           </div>
 
@@ -175,16 +176,12 @@ const BetModal: React.FC<BetModalProps> = ({ event, isOpen, onClose, onBetSucces
               <h4 className="text-sm font-medium text-blue-200 mb-2">Estimated Outcome</h4>
               <div className="space-y-1 text-sm">
                 <div className="flex justify-between text-blue-100">
-                  <span>Shares you'll get:</span>
+                  <span>Total ETH:</span>
                   <span>{getEstimatedPayout()}</span>
-                </div>
-                <div className="flex justify-between text-blue-100">
-                  <span>Max payout if you win:</span>
-                  <span>{getMaxPayout()} ETH</span>
                 </div>
                 <div className="flex justify-between text-blue-100/70">
                   <span>Your bet amount:</span>
-                  <span>{betAmount} ETH</span>
+                  <span>{betAmount} Shares</span>
                 </div>
               </div>
             </div>

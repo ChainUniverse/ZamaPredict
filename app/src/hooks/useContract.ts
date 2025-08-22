@@ -6,33 +6,50 @@ import { useFHE } from '@/utils/fhe';
 export const useContractWrite = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
-  
+
   const { data: walletClient } = useWalletClient();
   const { address } = useAccount();
   const { writeContractAsync } = useWriteContract();
   const { createEncryptedInput, instance } = useFHE();
 
+  const convertHandle = (handle: any): string => {
+    let formattedHandle: string;
+    if (typeof handle === 'string') {
+      formattedHandle = handle.startsWith('0x') ? handle : `0x${handle}`;
+    } else if (handle instanceof Uint8Array) {
+      formattedHandle = `0x${Array.from(handle).map(b => b.toString(16).padStart(2, '0')).join('')}`;
+    } else {
+      formattedHandle = `0x${handle.toString()}`;
+    }
+    return formattedHandle
+  };
+
   const placeBet = async (
-    eventId: number, 
-    shares: bigint, 
-    isYes: boolean, 
+    eventId: number,
+    shares: bigint,
+    isYes: boolean,
     betAmount: bigint
   ) => {
     if (!walletClient || !address || !instance) {
       throw new Error('Wallet not connected or FHE not initialized');
     }
-
+    console.log('Placing bet with encrypted input:', {
+      eventId,
+      shares: shares.toString(),
+      isYes,
+      betAmount: betAmount.toString()
+    });
     setIsLoading(true);
     setError('');
 
     try {
       // Create encrypted input for the bet
       const input = createEncryptedInput(DEFAULT_CONTRACT_ADDRESS, address);
-      
+
       // Add encrypted values - shares (as 32-bit) and direction
       input.add32(Number(shares));
       input.addBool(isYes);
-      
+
       // Encrypt the input
       const encryptedInput = await input.encrypt();
 
@@ -51,9 +68,9 @@ export const useContractWrite = () => {
         functionName: 'placeBet',
         args: [
           BigInt(eventId),
-          encryptedInput.handles[0] as unknown as `0x${string}`, // encrypted shares
-          encryptedInput.handles[1] as unknown as `0x${string}`, // encrypted direction
-          encryptedInput.inputProof as unknown as `0x${string}`
+          convertHandle(encryptedInput.handles[0]) as `0x${string}`, // encrypted shares
+          convertHandle(encryptedInput.handles[1]) as `0x${string}`, // encrypted direction
+          convertHandle(encryptedInput.inputProof) as `0x${string}`
         ],
         value: betAmount, // Send ETH with the transaction
       });
