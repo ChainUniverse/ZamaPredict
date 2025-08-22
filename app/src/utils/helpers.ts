@@ -1,6 +1,6 @@
 import { formatDistanceToNow, format } from 'date-fns';
 import { ERROR_MESSAGES } from '@/constants/config';
-import type { EventStatus } from '@/types';
+import { EventStatus } from '@/types';
 
 export const formatEther = (value: bigint, decimals: number = 4): string => {
   const eth = Number(value) / 1e18;
@@ -34,10 +34,10 @@ export const getEventStatus = (
 ): EventStatus => {
   const now = Math.floor(Date.now() / 1000);
 
-  if (isResolved) return 'resolved';
-  if (now < startTime) return 'upcoming';
-  if (now >= startTime && now <= endTime) return 'active';
-  return 'ended';
+  if (isResolved) return EventStatus.RESOLVED;
+  if (now < startTime) return EventStatus.UPCOMING;
+  if (now >= startTime && now <= endTime) return EventStatus.ACTIVE;
+  return EventStatus.ENDED;
 };
 
 export const isEventActive = (
@@ -46,18 +46,18 @@ export const isEventActive = (
   isResolved: boolean
 ): boolean => {
   const status = getEventStatus(startTime, endTime, isResolved);
-  return status === 'active';
+  return status === EventStatus.ACTIVE;
 };
 
 export const getStatusColor = (status: EventStatus): string => {
   switch (status) {
-    case 'upcoming':
+    case EventStatus.UPCOMING:
       return 'text-blue-500';
-    case 'active':
+    case EventStatus.ACTIVE:
       return 'text-green-500';
-    case 'ended':
+    case EventStatus.ENDED:
       return 'text-yellow-500';
-    case 'resolved':
+    case EventStatus.RESOLVED:
       return 'text-gray-500';
     default:
       return 'text-gray-500';
@@ -66,13 +66,13 @@ export const getStatusColor = (status: EventStatus): string => {
 
 export const getStatusBadgeColor = (status: EventStatus): string => {
   switch (status) {
-    case 'upcoming':
+    case EventStatus.UPCOMING:
       return 'bg-blue-100 text-blue-800';
-    case 'active':
+    case EventStatus.ACTIVE:
       return 'bg-green-100 text-green-800';
-    case 'ended':
+    case EventStatus.ENDED:
       return 'bg-yellow-100 text-yellow-800';
-    case 'resolved':
+    case EventStatus.RESOLVED:
       return 'bg-gray-100 text-gray-800';
     default:
       return 'bg-gray-100 text-gray-800';
@@ -93,7 +93,7 @@ export const calculateOdds = (yesShares: number, noShares: number): { yes: numbe
 };
 
 export const calculatePotentialWinnings = (
-  betAmount: number,
+  _betAmount: number,
   userShares: number,
   totalWinningShares: number,
   totalPool: number

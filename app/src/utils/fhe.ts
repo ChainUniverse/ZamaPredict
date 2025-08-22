@@ -1,5 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
-import type { ReactNode } from 'react';
+import { useState, useEffect } from 'react';
 import { createInstance, initSDK, SepoliaConfig } from '@zama-fhe/relayer-sdk/bundle';
 import type { FhevmInstance } from '@zama-fhe/relayer-sdk/bundle';
 
@@ -60,7 +59,7 @@ export const createEncryptedBet = async (
 
 export const decryptUserData = async (
   encryptedHandle: string,
-  dataType: 'euint32' | 'euint64' | 'ebool',
+  _dataType: 'euint32' | 'euint64' | 'ebool',
   contractAddress: string,
   signer: any
 ): Promise<any> => {
@@ -203,4 +202,45 @@ export const formatEncryptedValue = (value: any, type: 'amount' | 'shares' | 'di
     default:
       return value.toString();
   }
+};
+
+// React hook for FHE operations
+export const useFHE = () => {
+  const [instance, setInstance] = useState<FhevmInstance | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [error, setError] = useState<string>('');
+
+  const initialize = async () => {
+    if (instance) return instance;
+    
+    try {
+      const fheInstance = await initializeFHE();
+      setInstance(fheInstance);
+      setIsInitialized(true);
+      return fheInstance;
+    } catch (err: any) {
+      const errorMessage = err.message || 'Failed to initialize FHE';
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    }
+  };
+
+  const createEncryptedInput = (contractAddress: string, userAddress: string) => {
+    if (!instance) {
+      throw new Error('FHE not initialized');
+    }
+    return instance.createEncryptedInput(contractAddress, userAddress);
+  };
+
+  useEffect(() => {
+    initialize();
+  }, []);
+
+  return {
+    instance,
+    isInitialized,
+    error,
+    initialize,
+    createEncryptedInput
+  };
 };

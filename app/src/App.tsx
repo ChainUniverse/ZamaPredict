@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider } from 'wagmi';
 import { RainbowKitProvider } from '@rainbow-me/rainbowkit';
@@ -12,6 +12,7 @@ const queryClient = new QueryClient();
 
 function App() {
   const [activeTab, setActiveTab] = useState<'events' | 'create'>('events');
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   return (
     <ErrorBoundary>
@@ -48,9 +49,12 @@ function App() {
                   
                   <div className="animate-fade-in">
                     {activeTab === 'events' ? (
-                      <EventList />
+                      <EventList refreshTrigger={refreshTrigger} />
                     ) : (
-                      <CreateEvent onEventCreated={() => setActiveTab('events')} />
+                      <CreateEvent onEventCreated={() => {
+                        setActiveTab('events');
+                        setRefreshTrigger(prev => prev + 1); // Trigger refresh when new event is created
+                      }} />
                     )}
                   </div>
                 </div>
