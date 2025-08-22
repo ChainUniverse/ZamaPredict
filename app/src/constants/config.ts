@@ -40,19 +40,151 @@ export const ERROR_MESSAGES = {
   5: 'No winnings available to claim'
 };
 
-// Contract ABI (will be replaced with actual ABI after compilation)
+// Contract ABI - key functions for the PredictionMarket contract
 export const PREDICTION_MARKET_ABI = [
-  // This will be populated with the actual contract ABI
-  // For now, including key function signatures
-  "function createPredictionEvent(string memory description, uint256 startTime, uint256 endTime, uint256 priceYes, uint256 priceNo) external",
-  "function placeBet(uint256 eventId, bytes32 encryptedShares, bytes32 encryptedIsYesBet, bytes calldata inputProof) external payable",
-  "function resolveEvent(uint256 eventId, bool outcome) external",
-  "function claimRewards(uint256 eventId) external",
-  "function getPredictionEvent(uint256 eventId) external view returns (uint256 id, string memory description, uint256 startTime, uint256 endTime, uint256 priceYes, uint256 priceNo, bool isResolved, bool outcome, uint256 totalYesShares, uint256 totalNoShares, uint256 totalPoolEth)",
-  "function getUserBet(uint256 eventId, address user) external view returns (bytes32 encryptedAmount, bytes32 encryptedShares, bytes32 isYesBet, bool hasPlacedBet)",
-  "function getEventCount() external view returns (uint256)",
-  "function getLastError(address user) external view returns (bytes32, uint256)"
-];
+  {
+    "inputs": [
+      {"internalType": "string", "name": "desc", "type": "string"},
+      {"internalType": "uint256", "name": "start", "type": "uint256"},
+      {"internalType": "uint256", "name": "end", "type": "uint256"},
+      {"internalType": "uint256", "name": "yesPrice", "type": "uint256"},
+      {"internalType": "uint256", "name": "noPrice", "type": "uint256"}
+    ],
+    "name": "createEvent",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {"internalType": "uint256", "name": "eventId", "type": "uint256"},
+      {"internalType": "externalEuint32", "name": "shares", "type": "bytes32"},
+      {"internalType": "externalEbool", "name": "isYes", "type": "bytes32"},
+      {"internalType": "bytes", "name": "proof", "type": "bytes"}
+    ],
+    "name": "placeBet",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {"internalType": "uint256", "name": "eventId", "type": "uint256"},
+      {"internalType": "bool", "name": "outcome", "type": "bool"}
+    ],
+    "name": "resolveEvent",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {"internalType": "uint256", "name": "eventId", "type": "uint256"}
+    ],
+    "name": "claimReward",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {"internalType": "uint256", "name": "eventId", "type": "uint256"}
+    ],
+    "name": "getPredicEvent",
+    "outputs": [
+      {
+        "components": [
+          {"internalType": "uint256", "name": "id", "type": "uint256"},
+          {"internalType": "string", "name": "description", "type": "string"},
+          {"internalType": "uint256", "name": "startTime", "type": "uint256"},
+          {"internalType": "uint256", "name": "endTime", "type": "uint256"},
+          {"internalType": "uint256", "name": "priceYes", "type": "uint256"},
+          {"internalType": "uint256", "name": "priceNo", "type": "uint256"},
+          {"internalType": "bool", "name": "resolved", "type": "bool"},
+          {"internalType": "bool", "name": "outcome", "type": "bool"},
+          {"internalType": "uint256", "name": "totalEth", "type": "uint256"},
+          {"internalType": "euint64", "name": "totalYes", "type": "bytes32"},
+          {"internalType": "euint64", "name": "totalNo", "type": "bytes32"},
+          {"internalType": "uint256", "name": "decryptedYes", "type": "uint256"},
+          {"internalType": "uint256", "name": "decryptedNo", "type": "uint256"},
+          {"internalType": "bool", "name": "decryptionDone", "type": "bool"}
+        ],
+        "internalType": "struct PredictionMarket.Event",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {"internalType": "uint256", "name": "eventId", "type": "uint256"},
+      {"internalType": "address", "name": "user", "type": "address"}
+    ],
+    "name": "getBet",
+    "outputs": [
+      {
+        "components": [
+          {"internalType": "euint64", "name": "amount", "type": "bytes32"},
+          {"internalType": "euint32", "name": "shares", "type": "bytes32"},
+          {"internalType": "ebool", "name": "isYes", "type": "bytes32"},
+          {"internalType": "bool", "name": "placed", "type": "bool"}
+        ],
+        "internalType": "struct PredictionMarket.Bet",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getEventCount",
+    "outputs": [
+      {"internalType": "uint256", "name": "", "type": "uint256"}
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
+    "outputs": [
+      {"internalType": "address", "name": "", "type": "address"}
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {"indexed": true, "internalType": "uint256", "name": "eventId", "type": "uint256"},
+      {"indexed": false, "internalType": "string", "name": "description", "type": "string"}
+    ],
+    "name": "EventCreated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {"indexed": true, "internalType": "uint256", "name": "eventId", "type": "uint256"},
+      {"indexed": true, "internalType": "address", "name": "user", "type": "address"}
+    ],
+    "name": "BetPlaced",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {"indexed": true, "internalType": "uint256", "name": "eventId", "type": "uint256"},
+      {"indexed": false, "internalType": "bool", "name": "outcome", "type": "bool"}
+    ],
+    "name": "EventResolved",
+    "type": "event"
+  }
+] as const;
 
 // Default contract address (update after deployment)
 export const DEFAULT_CONTRACT_ADDRESS = "0x042155e8Ee5688adEBe209E3a04668b7fB10153e";
