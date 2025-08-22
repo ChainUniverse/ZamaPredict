@@ -55,7 +55,7 @@ export const PREDICTION_MARKET_ABI = [
 ];
 
 // Default contract address (update after deployment)
-export const DEFAULT_CONTRACT_ADDRESS = "0x0000000000000000000000000000000000000000";
+export const DEFAULT_CONTRACT_ADDRESS = "0x042155e8Ee5688adEBe209E3a04668b7fB10153e";
 
 // UI Constants
 export const UI_CONFIG = {
@@ -70,7 +70,7 @@ export const UI_CONFIG = {
 // Event status calculation helpers
 export const getEventStatus = (startTime: number, endTime: number, isResolved: boolean) => {
   const now = Math.floor(Date.now() / 1000);
-  
+
   if (isResolved) return 'resolved';
   if (now < startTime) return 'upcoming';
   if (now >= startTime && now <= endTime) return 'active';
