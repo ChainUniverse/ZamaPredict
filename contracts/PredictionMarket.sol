@@ -36,10 +36,19 @@ contract PredictionMarket is SepoliaConfig {
         uint256 actualEthAmount; // Actual ETH amount spent (public for display)
     }
 
+    /// @notice Represents a user's reward information for a specific event
+    /// @dev Tracks both reward amount and claim status for better record keeping
+    struct RewardInfo {
+        uint256 amount; // The current reward amount in wei (0 after withdrawal)
+        uint256 originalAmount; // The original reward amount before withdrawal
+        bool claimed; // Whether the reward has been claimed
+        bool withdrawn; // Whether the reward has been withdrawn
+    }
+
     // Storage mappings
     mapping(uint256 => Event) public events; // eventId => Event details
     mapping(uint256 => mapping(address => Bet)) public bets; // eventId => user => Bet details
-    // mapping(address => euint64) public rewards;                 // user => encrypted cumulative rewards
+    mapping(uint256 => mapping(address => RewardInfo)) public rewardInfo; // eventId => user => reward information
     mapping(uint256 => uint256) public requestToEvent; // decryption requestId => eventId
     mapping(uint256 => address) public requestToUser; // decryption requestId => user address
     mapping(address => uint256[]) public userBets; // user => list of eventIds they bet on
@@ -53,7 +62,8 @@ contract PredictionMarket is SepoliaConfig {
     event BetPlaced(uint256 indexed eventId, address indexed user);
     event EventResolved(uint256 indexed eventId, bool outcome);
     event TotalsDecrypted(uint256 indexed eventId, uint256 yes, uint256 no);
-    event RewardClaimed(address indexed user, uint256 amount);
+    event RewardCalculated(address indexed user, uint256 indexed eventId, uint256 amount);
+    event RewardWithdrawn(address indexed user, uint256 amount);
 
     /// @notice Restricts function access to contract owner only
     modifier onlyOwner() {
@@ -220,6 +230,7 @@ contract PredictionMarket is SepoliaConfig {
         require(eventId < eventCount, "Event not found");
         Event storage ev = events[eventId];
         require(ev.decryptionDone, "Not ready"); // Event totals must be decrypted first
+        require(!rewardInfo[eventId][msg.sender].claimed, "Already claimed"); // Prevent double claiming
 
         Bet storage userBet = bets[eventId][msg.sender];
         require(userBet.placed, "No bet");
@@ -235,11 +246,11 @@ contract PredictionMarket is SepoliaConfig {
         requestToEvent[reqId] = eventId; // Map request to event
         requestToUser[reqId] = msg.sender; // Map request to user
 
-        userBet.placed = false; // Prevent double claiming
+        rewardInfo[eventId][msg.sender].claimed = true; // Mark as claimed to prevent double claiming
     }
 
     /// @notice Callback function called by KMS after decrypting user's bet details
-    /// @dev Calculates and distributes winnings based on the decrypted bet information
+    /// @dev Calculates and records winnings based on the decrypted bet information
     /// @param reqId The request ID from the original decryption request
     /// @param shares Decrypted shares the user wagered
     /// @param isYesNum Decrypted bet direction as number (1 = YES, 0 = NO)
@@ -256,31 +267,48 @@ contract PredictionMarket is SepoliaConfig {
         bool userBetYes = (isYesNum == 1);
         bool won = (userBetYes == ev.outcome); // Check if user's prediction was correct
 
-        // Calculate and distribute winnings if user won
+        // Calculate winnings if user won
         if (won && ev.totalEth > 0) {
-            // Get the total amounts for winning and losing sides
-            uint256 winTotal = userBetYes ? ev.decryptedYes : ev.decryptedNo;
-            uint256 loseTotal = userBetYes ? ev.decryptedNo : ev.decryptedYes;
+            uint256 totalWinShares = ev.outcome ? ev.decryptedYes : ev.decryptedNo;
 
-            if (winTotal > 0) {
-                // Payout formula: user's bet + (user's bet * losing total / winning total)
-                // This gives the user their original bet plus a proportional share of the losing side's ETH
-                uint256 winAmount = shares + (shares * loseTotal) / winTotal;
+            if (totalWinShares > 0) {
+                // Payout formula: (user's shares * total ETH) / total winning shares
+                // This gives the user a proportional share of the total ETH pool
+                uint256 winAmount = (ev.totalEth * shares) / totalWinShares;
 
-                // Update user's encrypted rewards balance
-                // rewards[user] = FHE.add(rewards[user], FHE.asEuint64(uint64(winAmount)));
-                // FHE.allowThis(rewards[user]);  // Contract needs access
-                // FHE.allow(rewards[user], user); // User needs access for decryption
+                // Add to user's pending rewards for this specific event
+                rewardInfo[eventId][user].amount = winAmount;
+                rewardInfo[eventId][user].originalAmount = winAmount;
 
-                // Transfer ETH to winner
-                payable(user).transfer(winAmount);
-                emit RewardClaimed(user, winAmount);
+                emit RewardCalculated(user, eventId, winAmount);
             }
         }
 
         // Clean up mappings to save gas
         delete requestToEvent[reqId];
         delete requestToUser[reqId];
+    }
+
+    /// @notice Allows users to withdraw their rewards for a specific event
+    /// @dev Transfers pending rewards to the user and marks as withdrawn
+    /// @param eventId The ID of the event to withdraw rewards from
+    function withdrawReward(uint256 eventId) external {
+        require(eventId < eventCount, "Event not found");
+        require(events[eventId].resolved, "Event not resolved");
+        require(rewardInfo[eventId][msg.sender].claimed, "Rewards not calculated yet");
+
+        uint256 amount = rewardInfo[eventId][msg.sender].amount;
+        require(amount > 0, "No rewards to withdraw");
+        require(address(this).balance >= amount, "Insufficient contract balance");
+
+        // Reset pending rewards and mark as withdrawn before transfer to prevent reentrancy
+        rewardInfo[eventId][msg.sender].amount = 0;
+        rewardInfo[eventId][msg.sender].withdrawn = true;
+
+        // Transfer rewards to user
+        payable(msg.sender).transfer(amount);
+
+        emit RewardWithdrawn(msg.sender, amount);
     }
 
     // View functions for querying contract state
@@ -333,6 +361,37 @@ contract PredictionMarket is SepoliaConfig {
     /// @return The current event count (next event will have this ID)
     function getEventCount() external view returns (uint256) {
         return eventCount;
+    }
+
+    /// @notice Retrieves the pending reward amount for a user for a specific event
+    /// @dev Returns the amount of ETH the user can withdraw for this event
+    /// @param eventId The ID of the event to query
+    /// @param user The address of the user to query
+    /// @return The pending reward amount in wei for this event
+    function getPendingReward(uint256 eventId, address user) external view returns (uint256) {
+        return rewardInfo[eventId][user].amount;
+    }
+
+    /// @notice Checks if a user has already claimed rewards for a specific event
+    /// @dev Returns true if the user has claimed, false otherwise
+    /// @param eventId The ID of the event to check
+    /// @param user The address of the user to check
+    /// @return Whether the user has claimed rewards for this event
+    function hasClaimedReward(uint256 eventId, address user) external view returns (bool) {
+        return rewardInfo[eventId][user].claimed;
+    }
+
+    /// @notice Retrieves complete reward information for a user for a specific event
+    /// @dev Returns comprehensive reward status including original amount and withdrawal status
+    /// @param eventId The ID of the event to query
+    /// @param user The address of the user to query
+    /// @return amount The current reward amount in wei for this event
+    /// @return originalAmount The original reward amount before any withdrawal
+    /// @return claimed Whether the reward has been claimed
+    /// @return withdrawn Whether the reward has been withdrawn
+    function getRewardInfo(uint256 eventId, address user) external view returns (uint256 amount, uint256 originalAmount, bool claimed, bool withdrawn) {
+        RewardInfo storage info = rewardInfo[eventId][user];
+        return (info.amount, info.originalAmount, info.claimed, info.withdrawn);
     }
 
     // Administrative functions for contract management
