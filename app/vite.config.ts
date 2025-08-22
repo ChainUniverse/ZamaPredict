@@ -7,19 +7,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': resolve(__dirname, './src'),
-    },
-    fallback: {
-      'buffer': require.resolve('buffer/'),
-      'crypto': require.resolve('crypto-browserify'),
-      'stream': require.resolve('stream-browserify'),
-      'path': require.resolve('path-browserify'),
-    },
-  },
-  define: {
-    global: 'globalThis',
-  },
-  optimizeDeps: {
-    include: ['buffer']
+    }
   },
   server: {
     port: 3000,
