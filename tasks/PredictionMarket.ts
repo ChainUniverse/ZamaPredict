@@ -3,19 +3,22 @@ import type { TaskArguments } from "hardhat/types";
 import { FhevmType } from "@fhevm/hardhat-plugin";
 task("prediction:create-event")
   .addParam("desc", "Event description")
-  .addParam("starttime", "Start time (Unix timestamp)")
-  .addParam("endtime", "End time (Unix timestamp)")
   .addParam("priceyes", "Price for YES bets in wei")
   .addParam("priceno", "Price for NO bets in wei")
   .setAction(async function (taskArguments: TaskArguments, { ethers, deployments }) {
-    const { desc, starttime, endtime, priceyes, priceno } = taskArguments;
+    const { desc, priceyes, priceno } = taskArguments;
+
+    // Calculate start time (current time + 30 seconds)
+    const starttime = Math.floor(Date.now() / 1000) + 30;
+    // Calculate end time (start time + 120 seconds)
+    const endtime = starttime + 120;
     const predictionMarketDeployment = await deployments.get("PredictionMarket");
     const predictionMarket = await ethers.getContractAt("PredictionMarket", predictionMarketDeployment.address);
 
     console.log("Creating prediction event...");
     console.log("Description:", desc);
-    console.log("Start time:", new Date(parseInt(starttime) * 1000).toISOString());
-    console.log("End time:", new Date(parseInt(endtime) * 1000).toISOString());
+    console.log("Start time:", new Date((starttime) * 1000).toISOString());
+    console.log("End time:", new Date((endtime) * 1000).toISOString());
     console.log("YES price:", priceyes, "wei");
     console.log("NO price:", priceno, "wei");
 
