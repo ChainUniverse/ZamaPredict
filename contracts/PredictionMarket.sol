@@ -1,397 +1,391 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {
-    FHE,
-    euint32,
-    euint64,
-    ebool,
-    externalEuint32,
-    externalEuint64,
-    externalEbool
-} from "@fhevm/solidity/lib/FHE.sol";
+import {FHE, euint32, euint64, ebool, externalEuint32, externalEbool} from "@fhevm/solidity/lib/FHE.sol";
 import {SepoliaConfig} from "@fhevm/solidity/config/ZamaConfig.sol";
 
 /// @title PredictionMarket - A confidential prediction market using FHE
-/// @notice This contract allows users to place encrypted bets on prediction events
-/// @dev Uses Zama's FHE for confidential betting amounts, shares, and directions
-/// @author ZamaPredict Team
+/// @notice Implements encrypted betting with decryption for settlement
+/// @dev Uses Zama's FHE to keep bet amounts and directions private until resolution
 contract PredictionMarket is SepoliaConfig {
     /// @notice Represents a prediction event that users can bet on
-    /// @dev Contains both public information and aggregated data for settlement
-    struct PredictionEvent {
-        uint256 id;                 // Unique identifier for the event
-        string description;         // Human-readable description of the prediction
-        uint256 startTime;         // Timestamp when betting starts
-        uint256 endTime;           // Timestamp when betting ends
-        uint256 priceYes;          // Fixed price for YES bets (in wei)
-        uint256 priceNo;           // Fixed price for NO bets (in wei)
-        bool isResolved;           // Whether the event outcome has been determined
-        bool outcome;              // Final result: true = YES wins, false = NO wins
-        uint256 totalYesShares;    // Total public YES shares count
-        uint256 totalNoShares;     // Total public NO shares count
-        uint256 totalPoolEth;      // Total ETH collected in the betting pool
+    /// @dev All encrypted fields are kept confidential until resolution
+    struct Event {
+        uint256 id;                    // Unique identifier for the event
+        string description;            // Human-readable description of what's being predicted
+        uint256 startTime;            // Timestamp when betting opens
+        uint256 endTime;              // Timestamp when betting closes
+        uint256 priceYes;             // Fixed price for YES bets (currently unused in logic)
+        uint256 priceNo;              // Fixed price for NO bets (currently unused in logic)
+        bool resolved;                // Whether the event outcome has been determined
+        bool outcome;                 // The actual outcome (true = YES wins, false = NO wins)
+        uint256 totalEth;             // Total ETH wagered on this event (public)
+        euint64 totalYes;             // Total encrypted amount bet on YES
+        euint64 totalNo;              // Total encrypted amount bet on NO
+        uint256 decryptedYes;         // Decrypted total YES amount (available after resolution)
+        uint256 decryptedNo;          // Decrypted total NO amount (available after resolution)
+        bool decryptionDone;          // Whether totals have been successfully decrypted
     }
 
-    /// @notice Represents a user's encrypted bet on a prediction event
-    /// @dev All bet details are encrypted except the participation flag
-    struct UserBet {
-        euint64 encryptedAmount;   // Encrypted bet amount in wei (FHE protected)
-        euint32 encryptedShares;   // Encrypted number of shares purchased (FHE protected)
-        ebool isYesBet;            // Encrypted bet direction: true = YES, false = NO (FHE protected)
-        bool hasPlacedBet;         // Public flag to prevent double betting (not encrypted)
+    /// @notice Represents a user's bet on a specific event
+    /// @dev All bet details are encrypted to maintain privacy
+    struct Bet {
+        euint64 amount;               // Encrypted amount of ETH wagered
+        euint32 shares;               // Encrypted number of shares purchased (for future use)
+        ebool isYes;                  // Encrypted bet direction (true = YES, false = NO)
+        bool placed;                  // Whether this bet has been placed (prevents double betting)
     }
 
-    /// @notice Mapping from event ID to prediction event details
-    mapping(uint256 => PredictionEvent) public predictionEvents;
-    
-    /// @notice Mapping from event ID to user address to their encrypted bet
-    mapping(uint256 => mapping(address => UserBet)) public userBets;
-    
-    /// @notice Mapping from user address to their encrypted accumulated rewards
-    mapping(address => euint64) public userRewards;
+    // Storage mappings
+    mapping(uint256 => Event) public events;                    // eventId => Event details
+    mapping(uint256 => mapping(address => Bet)) public bets;    // eventId => user => Bet details
+    mapping(address => euint64) public rewards;                 // user => encrypted cumulative rewards
+    mapping(uint256 => uint256) public requestToEvent;          // decryption requestId => eventId
+    mapping(uint256 => address) public requestToUser;           // decryption requestId => user address
 
-    /// @notice Counter for generating unique event IDs
-    uint256 public eventCounter;
-    
-    /// @notice Contract owner who can create events and resolve them
-    address public owner;
+    // State variables
+    uint256 public eventCount;                                   // Total number of events created
+    address public owner;                                        // Contract owner (can create events and resolve them)
 
-    // Error codes for user feedback (since FHE operations don't revert on failure)
-    uint32 constant NO_ERROR = 0;                // Operation successful
-    uint32 constant BETTING_NOT_ACTIVE = 1;      // Betting period is not active
-    uint32 constant INSUFFICIENT_PAYMENT = 2;    // Payment amount is insufficient
-    uint32 constant ALREADY_BET = 3;             // User has already placed a bet
-    uint32 constant EVENT_NOT_RESOLVED = 4;      // Event outcome not yet determined
-    uint32 constant NO_WINNINGS = 5;             // User has no winnings to claim
-
-    /// @notice Mapping to track the last error for each user
-    mapping(address => uint32) public lastError;
-
-    /// @notice Emitted when a new prediction event is created
-    /// @param eventId Unique identifier of the created event
-    /// @param description Human-readable description of the prediction
-    /// @param startTime Timestamp when betting opens
-    /// @param endTime Timestamp when betting closes
-    /// @param priceYes Fixed price for YES bets in wei
-    /// @param priceNo Fixed price for NO bets in wei
-    event PredictionEventCreated(
-        uint256 indexed eventId,
-        string description,
-        uint256 startTime,
-        uint256 endTime,
-        uint256 priceYes,
-        uint256 priceNo
-    );
-
-    /// @notice Emitted when a user places an encrypted bet
-    /// @param eventId ID of the event being bet on
-    /// @param user Address of the user placing the bet
-    /// @param timestamp Time when the bet was placed
-    event BetPlaced(uint256 indexed eventId, address indexed user, uint256 timestamp);
-
-    /// @notice Emitted when an event's outcome is resolved
-    /// @param eventId ID of the resolved event
-    /// @param outcome Final result: true = YES wins, false = NO wins
+    // Events for off-chain monitoring
+    event EventCreated(uint256 indexed eventId, string description);
+    event BetPlaced(uint256 indexed eventId, address indexed user);
     event EventResolved(uint256 indexed eventId, bool outcome);
+    event TotalsDecrypted(uint256 indexed eventId, uint256 yes, uint256 no);
+    event RewardClaimed(address indexed user, uint256 amount);
 
-    /// @notice Emitted when a user successfully claims their rewards
-    /// @param user Address of the user claiming rewards
-    /// @param timestamp Time when rewards were claimed
-    event RewardsClaimed(address indexed user, uint256 timestamp);
-
-    /// @notice Restricts function access to the contract owner only
+    /// @notice Restricts function access to contract owner only
     modifier onlyOwner() {
-        require(msg.sender == owner, "Only owner can call this function");
+        require(msg.sender == owner, "Only owner");
         _;
     }
 
-    /// @notice Ensures the specified event ID exists
-    /// @param eventId The event ID to validate
-    modifier eventExists(uint256 eventId) {
-        require(eventId < eventCounter, "Event does not exist");
-        _;
-    }
-
-    /// @notice Initializes the contract with the deployer as owner
+    /// @notice Initializes the contract with deployer as owner
     constructor() {
         owner = msg.sender;
-        eventCounter = 0;
     }
 
-    /// @notice Creates a new prediction event (only owner)
-    /// @param description Human-readable description of what's being predicted
-    /// @param startTime Timestamp when betting should start
-    /// @param endTime Timestamp when betting should end
-    /// @param priceYes Fixed price in wei for purchasing YES shares
-    /// @param priceNo Fixed price in wei for purchasing NO shares
-    /// @dev Validates timing and pricing parameters before creation
-    function createPredictionEvent(
-        string memory description,
-        uint256 startTime,
-        uint256 endTime,
-        uint256 priceYes,
-        uint256 priceNo
+    /// @notice Creates a new prediction event
+    /// @dev Only owner can create events. Sets up encrypted totals with proper ACL permissions
+    /// @param desc Human-readable description of the prediction event
+    /// @param start Timestamp when betting opens (must be in the future)
+    /// @param end Timestamp when betting closes (must be after start)
+    /// @param yesPrice Fixed price for YES bets (currently unused in payout logic)
+    /// @param noPrice Fixed price for NO bets (currently unused in payout logic)
+    function createEvent(
+        string memory desc,
+        uint256 start,
+        uint256 end,
+        uint256 yesPrice,
+        uint256 noPrice
     ) external onlyOwner {
-        // Validate event timing
-        require(startTime > block.timestamp, "Start time must be in the future");
-        require(endTime > startTime, "End time must be after start time");
-        require(priceYes > 0 && priceNo > 0, "Prices must be greater than 0");
+        require(start > block.timestamp, "Invalid start");
+        require(end > start, "Invalid end");
+        require(yesPrice > 0 && noPrice > 0, "Invalid prices");
 
-        // Create and store the new prediction event
-        predictionEvents[eventCounter] = PredictionEvent({
-            id: eventCounter,
-            description: description,
-            startTime: startTime,
-            endTime: endTime,
-            priceYes: priceYes,
-            priceNo: priceNo,
-            isResolved: false,
+        // Initialize new event with encrypted zero totals
+        events[eventCount] = Event({
+            id: eventCount,
+            description: desc,
+            startTime: start,
+            endTime: end,
+            priceYes: yesPrice,
+            priceNo: noPrice,
+            resolved: false,
             outcome: false,
-            totalYesShares: 0,
-            totalNoShares: 0,
-            totalPoolEth: 0
+            totalEth: 0,
+            totalYes: FHE.asEuint64(0),        // Encrypted zero for YES total
+            totalNo: FHE.asEuint64(0),         // Encrypted zero for NO total
+            decryptedYes: 0,
+            decryptedNo: 0,
+            decryptionDone: false
         });
 
-        emit PredictionEventCreated(eventCounter, description, startTime, endTime, priceYes, priceNo);
+        // Grant contract access to encrypted totals for future updates
+        FHE.allowThis(events[eventCount].totalYes);
+        FHE.allowThis(events[eventCount].totalNo);
 
-        // Increment counter for next event
-        eventCounter++;
+        emit EventCreated(eventCount, desc);
+        eventCount++;
     }
 
-    /// @notice Allows users to place an encrypted bet on a prediction event
-    /// @param eventId ID of the event to bet on
-    /// @param encryptedShares Encrypted number of shares to purchase
-    /// @param encryptedIsYesBet Encrypted bet direction (true = YES, false = NO)
-    /// @param inputProof Cryptographic proof for the encrypted inputs
-    /// @dev All bet details remain confidential through FHE encryption
+    /// @notice Places an encrypted bet on a prediction event
+    /// @dev Validates external encrypted inputs and updates totals while maintaining privacy
+    /// @param eventId The ID of the event to bet on
+    /// @param shares External encrypted number of shares to purchase (currently unused in payout)
+    /// @param isYes External encrypted bet direction (true for YES, false for NO)
+    /// @param proof Cryptographic proof for the encrypted inputs
     function placeBet(
         uint256 eventId,
-        externalEuint32 encryptedShares,
-        externalEbool encryptedIsYesBet,
-        bytes calldata inputProof
-    ) external payable eventExists(eventId) {
-        PredictionEvent storage event_ = predictionEvents[eventId];
+        externalEuint32 shares,
+        externalEbool isYes,
+        bytes calldata proof
+    ) external payable {
+        require(eventId < eventCount, "Event not found");
+        Event storage ev = events[eventId];
 
-        // Verify that betting is currently active for this event
-        bool bettingActive = block.timestamp >= event_.startTime &&
-            block.timestamp <= event_.endTime &&
-            !event_.isResolved;
+        // Validate betting conditions
+        require(block.timestamp >= ev.startTime, "Not started");
+        require(block.timestamp <= ev.endTime, "Ended");
+        require(!ev.resolved, "Resolved");
+        require(!bets[eventId][msg.sender].placed, "Already bet");
+        require(msg.value > 0, "No payment");
 
-        // Set error and exit if betting is not active
-        if (!bettingActive) {
-            lastError[msg.sender] = BETTING_NOT_ACTIVE;
-            return;
-        }
+        // Convert external encrypted inputs to internal encrypted types
+        euint32 userShares = FHE.fromExternal(shares, proof);
+        ebool userIsYes = FHE.fromExternal(isYes, proof);
+        euint64 userAmount = FHE.asEuint64(uint64(msg.value));
 
-        // Prevent double betting by the same user on the same event
-        if (userBets[eventId][msg.sender].hasPlacedBet) {
-            lastError[msg.sender] = ALREADY_BET;
-            return;
-        }
+        // Store encrypted bet details
+        bets[eventId][msg.sender] = Bet({amount: userAmount, shares: userShares, isYes: userIsYes, placed: true});
 
-        // Validate and convert external encrypted inputs to internal FHE types
-        euint32 shares = FHE.fromExternal(encryptedShares, inputProof);
-        ebool isYesBet = FHE.fromExternal(encryptedIsYesBet, inputProof);
+        // Update totals based on encrypted bet direction without revealing which side was chosen
+        euint64 addYes = FHE.select(userIsYes, userAmount, FHE.asEuint64(0));  // Add to YES if isYes=true, else 0
+        euint64 addNo = FHE.select(userIsYes, FHE.asEuint64(0), userAmount);   // Add to NO if isYes=false, else 0
 
-        // Basic payment validation (simplified for demo)
-        // In production, more sophisticated FHE operations would validate payment amounts
-        require(msg.value > 0, "Payment required");
+        ev.totalYes = FHE.add(ev.totalYes, addYes);
+        ev.totalNo = FHE.add(ev.totalNo, addNo);
+        ev.totalEth += msg.value;  // Public total for transparency
 
-        // Store the user's encrypted bet data
-        userBets[eventId][msg.sender] = UserBet({
-            encryptedAmount: FHE.asEuint64(uint64(msg.value)),  // Encrypt the payment amount
-            encryptedShares: shares,                            // Store encrypted shares
-            isYesBet: isYesBet,                                // Store encrypted bet direction
-            hasPlacedBet: true                                 // Mark as participated (not encrypted)
-        });
+        // Set ACL permissions for encrypted values
+        FHE.allowThis(userAmount);        // Contract needs access
+        FHE.allow(userAmount, msg.sender); // User needs access for decryption
+        FHE.allowThis(userShares);
+        FHE.allow(userShares, msg.sender);
+        FHE.allowThis(userIsYes);
+        FHE.allow(userIsYes, msg.sender);
+        FHE.allowThis(ev.totalYes);       // Contract needs access to update totals
+        FHE.allowThis(ev.totalNo);
 
-        // Add payment to the event's total pool
-        event_.totalPoolEth += msg.value;
-
-        // Grant ACL (Access Control List) permissions for encrypted data
-        // Contract needs access for computations, user needs access for decryption
-        FHE.allowThis(userBets[eventId][msg.sender].encryptedAmount);
-        FHE.allow(userBets[eventId][msg.sender].encryptedAmount, msg.sender);
-        FHE.allowThis(userBets[eventId][msg.sender].encryptedShares);
-        FHE.allow(userBets[eventId][msg.sender].encryptedShares, msg.sender);
-        FHE.allowThis(userBets[eventId][msg.sender].isYesBet);
-        FHE.allow(userBets[eventId][msg.sender].isYesBet, msg.sender);
-
-        // Mark operation as successful
-        lastError[msg.sender] = NO_ERROR;
-
-        emit BetPlaced(eventId, msg.sender, block.timestamp);
+        emit BetPlaced(eventId, msg.sender);
     }
 
-    /// @notice Resolves a prediction event with the final outcome (only owner)
-    /// @param eventId ID of the event to resolve
-    /// @param outcome Final result: true = YES wins, false = NO wins
-    /// @dev Can only be called after the event ends and before it's already resolved
-    function resolveEvent(uint256 eventId, bool outcome) external onlyOwner eventExists(eventId) {
-        PredictionEvent storage event_ = predictionEvents[eventId];
-        
-        // Ensure event has ended and hasn't been resolved yet
-        require(block.timestamp > event_.endTime, "Event has not ended yet");
-        require(!event_.isResolved, "Event already resolved");
+    /// @notice Resolves a prediction event with the actual outcome
+    /// @dev Only owner can resolve. Triggers asynchronous decryption of encrypted totals
+    /// @param eventId The ID of the event to resolve
+    /// @param outcome The actual result (true = YES wins, false = NO wins)
+    function resolveEvent(uint256 eventId, bool outcome) external onlyOwner {
+        require(eventId < eventCount, "Event not found");
+        Event storage ev = events[eventId];
 
-        // Set the final outcome and mark as resolved
-        event_.outcome = outcome;
-        event_.isResolved = true;
+        // Validate resolution conditions
+        require(block.timestamp > ev.endTime, "Not ended");
+        require(!ev.resolved, "Already resolved");
+
+        ev.outcome = outcome;
+
+        // Request asynchronous decryption of encrypted totals for payout calculation
+        bytes32[] memory cts = new bytes32[](2);
+        cts[0] = FHE.toBytes32(ev.totalYes);  // Convert encrypted YES total to bytes for decryption
+        cts[1] = FHE.toBytes32(ev.totalNo);   // Convert encrypted NO total to bytes for decryption
+
+        // Submit decryption request to the KMS (Key Management System)
+        uint256 reqId = FHE.requestDecryption(cts, this.totalsCallback.selector);
+        requestToEvent[reqId] = eventId;  // Map request ID to event for callback processing
 
         emit EventResolved(eventId, outcome);
     }
 
-    /// @notice Allows users to claim their rewards after an event is resolved
-    /// @param eventId ID of the resolved event to claim rewards from
-    /// @dev Simplified reward calculation for demo purposes
-    function claimRewards(uint256 eventId) external eventExists(eventId) {
-        PredictionEvent storage event_ = predictionEvents[eventId];
-        require(event_.isResolved, "Event not resolved yet");
+    /// @notice Callback function called by KMS after decrypting event totals
+    /// @dev This function is automatically called when decryption is complete
+    /// @param reqId The request ID from the original decryption request
+    /// @param yesTotal Decrypted total amount wagered on YES
+    /// @param noTotal Decrypted total amount wagered on NO  
+    /// @param sigs Cryptographic signatures proving the decryption is valid
+    function totalsCallback(uint256 reqId, uint256 yesTotal, uint256 noTotal, bytes[] memory sigs) public {
+        // Verify that the decryption results are authentic and haven't been tampered with
+        FHE.checkSignatures(reqId, sigs);
 
-        UserBet storage userBet = userBets[eventId][msg.sender];
-        require(userBet.hasPlacedBet, "No bet placed");
+        uint256 eventId = requestToEvent[reqId];
+        Event storage ev = events[eventId];
 
-        // Calculate winnings (simplified for demo)
-        // In production, this would use FHE operations to determine if user won
-        // and calculate proportional rewards based on encrypted bet amounts
-        uint256 winnings = 0;
+        // Store the decrypted totals for payout calculations
+        ev.decryptedYes = yesTotal;
+        ev.decryptedNo = noTotal;
+        ev.resolved = true;
+        ev.decryptionDone = true;  // Flag that event is ready for reward claims
 
-        // Simplified payout logic for demonstration
-        if (event_.totalPoolEth > 0) {
-            // In production: decrypt user's bet direction and compare with outcome
-            // For now, give each participant a fixed share
-            winnings = event_.totalPoolEth / 2; // Simple 50% payout per participant
-        }
-
-        // Update error status based on whether user has winnings
-        lastError[msg.sender] = winnings > 0 ? NO_ERROR : NO_WINNINGS;
-
-        // Add winnings to user's encrypted reward balance
-        userRewards[msg.sender] = FHE.add(userRewards[msg.sender], FHE.asEuint64(uint64(winnings)));
-
-        // Prevent double claiming by marking bet as claimed
-        userBet.hasPlacedBet = false;
-
-        // Grant ACL permissions for the updated reward balance
-        FHE.allowThis(userRewards[msg.sender]);
-        FHE.allow(userRewards[msg.sender], msg.sender);
-
-        // Transfer actual ETH winnings if any
-        if (winnings > 0) {
-            payable(msg.sender).transfer(winnings);
-            emit RewardsClaimed(msg.sender, block.timestamp);
-        }
+        emit TotalsDecrypted(eventId, yesTotal, noTotal);
+        delete requestToEvent[reqId];  // Clean up mapping to save gas
     }
 
-    /// @notice Placeholder for reward withdrawal functionality
-    /// @dev In production, this would use FHE decryption to allow users to withdraw accumulated rewards
-    function withdrawRewards() external {
-        // For demo purposes, this function is simplified
-        // In production, would use FHE decryption requests to determine withdrawal amounts
-        revert("Use claimRewards instead - withdrawRewards not implemented in demo");
+    /// @notice Initiates the reward claim process for a user's bet
+    /// @dev Triggers asynchronous decryption of user's bet details to calculate payout
+    /// @param eventId The ID of the resolved event to claim rewards from
+    function claimReward(uint256 eventId) external {
+        require(eventId < eventCount, "Event not found");
+        Event storage ev = events[eventId];
+        require(ev.decryptionDone, "Not ready");  // Event totals must be decrypted first
+
+        Bet storage userBet = bets[eventId][msg.sender];
+        require(userBet.placed, "No bet");
+
+        // Request decryption of user's encrypted bet details
+        bytes32[] memory cts = new bytes32[](2);
+        cts[0] = FHE.toBytes32(userBet.amount);  // User's bet amount
+        // Convert boolean bet direction to integer for decryption (1 = YES, 0 = NO)
+        cts[1] = FHE.toBytes32(FHE.select(userBet.isYes, FHE.asEuint32(1), FHE.asEuint32(0)));
+
+        // Submit decryption request to KMS
+        uint256 reqId = FHE.requestDecryption(cts, this.userBetCallback.selector);
+        requestToEvent[reqId] = eventId;    // Map request to event
+        requestToUser[reqId] = msg.sender;  // Map request to user
+
+        userBet.placed = false;  // Prevent double claiming
     }
 
-    // ========== VIEW FUNCTIONS ==========
-    /// @notice Retrieves all public information about a prediction event
-    /// @param eventId ID of the event to query
-    /// @return id Event identifier
-    /// @return description Human-readable event description
-    /// @return startTime Betting start timestamp
-    /// @return endTime Betting end timestamp
-    /// @return priceYes Fixed price for YES bets in wei
-    /// @return priceNo Fixed price for NO bets in wei
-    /// @return isResolved Whether the event has been resolved
-    /// @return outcome Final result if resolved (true = YES wins)
-    /// @return totalYesShares Total YES shares sold
-    /// @return totalNoShares Total NO shares sold
-    /// @return totalPoolEth Total ETH in the betting pool
-    function getPredictionEvent(
+    /// @notice Callback function called by KMS after decrypting user's bet details
+    /// @dev Calculates and distributes winnings based on the decrypted bet information
+    /// @param reqId The request ID from the original decryption request  
+    /// @param amount Decrypted amount the user wagered
+    /// @param isYesNum Decrypted bet direction as number (1 = YES, 0 = NO)
+    /// @param sigs Cryptographic signatures proving the decryption is valid
+    function userBetCallback(uint256 reqId, uint256 amount, uint256 isYesNum, bytes[] memory sigs) public {
+        // Verify that the decryption results are authentic
+        FHE.checkSignatures(reqId, sigs);
+
+        uint256 eventId = requestToEvent[reqId];
+        address user = requestToUser[reqId];
+        Event storage ev = events[eventId];
+
+        // Convert decrypted direction back to boolean
+        bool userBetYes = (isYesNum == 1);
+        bool won = (userBetYes == ev.outcome);  // Check if user's prediction was correct
+
+        // Calculate and distribute winnings if user won
+        if (won && ev.totalEth > 0) {
+            // Get the total amounts for winning and losing sides
+            uint256 winTotal = userBetYes ? ev.decryptedYes : ev.decryptedNo;
+            uint256 loseTotal = userBetYes ? ev.decryptedNo : ev.decryptedYes;
+
+            if (winTotal > 0) {
+                // Payout formula: user's bet + (user's bet * losing total / winning total)
+                // This gives the user their original bet plus a proportional share of the losing side's ETH
+                uint256 winAmount = amount + (amount * loseTotal) / winTotal;
+
+                // Update user's encrypted rewards balance
+                rewards[user] = FHE.add(rewards[user], FHE.asEuint64(uint64(winAmount)));
+                FHE.allowThis(rewards[user]);  // Contract needs access
+                FHE.allow(rewards[user], user); // User needs access for decryption
+
+                // Transfer ETH to winner
+                payable(user).transfer(winAmount);
+                emit RewardClaimed(user, winAmount);
+            }
+        }
+
+        // Clean up mappings to save gas
+        delete requestToEvent[reqId];
+        delete requestToUser[reqId];
+    }
+
+    // View functions for querying contract state
+
+    /// @notice Retrieves public information about a prediction event
+    /// @dev Returns non-encrypted event details that are safe to expose publicly
+    /// @param eventId The ID of the event to query
+    /// @return description Human-readable description of the prediction
+    /// @return startTime Timestamp when betting opens
+    /// @return endTime Timestamp when betting closes  
+    /// @return resolved Whether the event has been resolved with an outcome
+    /// @return outcome The actual result if resolved (true = YES wins, false = NO wins)
+    /// @return totalEth Total ETH wagered on this event (public for transparency)
+    /// @return decryptedYes Decrypted total amount bet on YES (only available after resolution)
+    /// @return decryptedNo Decrypted total amount bet on NO (only available after resolution)
+    /// @return decryptionDone Whether the encrypted totals have been successfully decrypted
+    function getEvent(
         uint256 eventId
     )
         external
         view
-        eventExists(eventId)
         returns (
-            uint256 id,
             string memory description,
             uint256 startTime,
             uint256 endTime,
-            uint256 priceYes,
-            uint256 priceNo,
-            bool isResolved,
+            bool resolved,
             bool outcome,
-            uint256 totalYesShares,
-            uint256 totalNoShares,
-            uint256 totalPoolEth
+            uint256 totalEth,
+            uint256 decryptedYes,
+            uint256 decryptedNo,
+            bool decryptionDone
         )
     {
-        PredictionEvent storage event_ = predictionEvents[eventId];
+        require(eventId < eventCount, "Event not found");
+        Event storage ev = events[eventId];
+
         return (
-            event_.id,
-            event_.description,
-            event_.startTime,
-            event_.endTime,
-            event_.priceYes,
-            event_.priceNo,
-            event_.isResolved,
-            event_.outcome,
-            event_.totalYesShares,
-            event_.totalNoShares,
-            event_.totalPoolEth
+            ev.description,
+            ev.startTime,
+            ev.endTime,
+            ev.resolved,
+            ev.outcome,
+            ev.totalEth,
+            ev.decryptedYes,
+            ev.decryptedNo,
+            ev.decryptionDone
         );
     }
 
-    /// @notice Retrieves a user's encrypted bet information for a specific event
-    /// @param eventId ID of the event to query
-    /// @param user Address of the user whose bet to retrieve
-    /// @return encryptedAmount User's encrypted bet amount in wei
-    /// @return encryptedShares User's encrypted number of shares
-    /// @return isYesBet User's encrypted bet direction (true = YES, false = NO)
-    /// @return hasPlacedBet Public flag indicating if user participated
-    /// @dev Only the user who placed the bet can decrypt the encrypted values
-    function getUserBet(
+    /// @notice Retrieves a user's encrypted bet details for a specific event
+    /// @dev Returns encrypted values that can only be decrypted by authorized parties
+    /// @param eventId The ID of the event to query
+    /// @param user The address of the user whose bet to retrieve
+    /// @return amount Encrypted amount of ETH wagered by the user
+    /// @return shares Encrypted number of shares purchased (for future use)
+    /// @return isYes Encrypted bet direction (true = YES, false = NO)
+    /// @return placed Whether this bet has been placed (public boolean)
+    function getBet(
         uint256 eventId,
         address user
-    ) external view returns (euint64 encryptedAmount, euint32 encryptedShares, ebool isYesBet, bool hasPlacedBet) {
-        UserBet storage bet = userBets[eventId][user];
-        return (bet.encryptedAmount, bet.encryptedShares, bet.isYesBet, bet.hasPlacedBet);
+    ) external view returns (euint64 amount, euint32 shares, ebool isYes, bool placed) {
+        Bet storage bet = bets[eventId][user];
+        return (bet.amount, bet.shares, bet.isYes, bet.placed);
     }
 
-    /// @notice Retrieves a user's encrypted accumulated rewards
-    /// @param user Address of the user to query
-    /// @return Encrypted total rewards available to the user
-    /// @dev User needs proper ACL permissions to decrypt this value
-    function getUserRewards(address user) external view returns (euint64) {
-        return userRewards[user];
+    /// @notice Retrieves a user's encrypted cumulative rewards balance
+    /// @dev Returns encrypted value that can only be decrypted by the user
+    /// @param user The address of the user whose rewards to retrieve
+    /// @return Encrypted total rewards earned by the user across all events
+    function getRewards(address user) external view returns (euint64) {
+        return rewards[user];
     }
 
-    /// @notice Retrieves the last error code for a specific user
-    /// @param user Address of the user to query
-    /// @return Error code from the last operation (0 = success)
-    /// @dev Used for debugging since FHE operations don't automatically revert
-    function getLastError(address user) external view returns (uint32) {
-        return lastError[user];
+    /// @notice Retrieves both encrypted and decrypted totals for an event
+    /// @dev Encrypted totals are always available, decrypted ones only after resolution
+    /// @param eventId The ID of the event to query
+    /// @return totalYes Encrypted total amount bet on YES
+    /// @return totalNo Encrypted total amount bet on NO
+    /// @return decryptedYes Decrypted total amount bet on YES (0 if not yet decrypted)
+    /// @return decryptedNo Decrypted total amount bet on NO (0 if not yet decrypted)
+    function getEventTotals(
+        uint256 eventId
+    ) external view returns (euint64 totalYes, euint64 totalNo, uint256 decryptedYes, uint256 decryptedNo) {
+        require(eventId < eventCount, "Event not found");
+        Event storage ev = events[eventId];
+        return (ev.totalYes, ev.totalNo, ev.decryptedYes, ev.decryptedNo);
     }
 
-    /// @notice Returns the total number of prediction events created
-    /// @return Total count of events (used for iteration and validation)
+    /// @notice Returns the total number of events created
+    /// @dev Useful for iterating through all events or checking latest event ID
+    /// @return The current event count (next event will have this ID)
     function getEventCount() external view returns (uint256) {
-        return eventCounter;
+        return eventCount;
     }
 
-    // ========== EMERGENCY & ADMIN FUNCTIONS ==========
-    /// @notice Emergency function to withdraw all contract funds (only owner)
-    /// @dev Should only be used in exceptional circumstances
+    // Administrative functions for contract management
+
+    /// @notice Emergency function to withdraw all ETH from the contract
+    /// @dev Only owner can call this. Should only be used in extreme circumstances
+    /// @dev This could disrupt ongoing betting and payouts - use with extreme caution
     function emergencyWithdraw() external onlyOwner {
         payable(owner).transfer(address(this).balance);
     }
 
-    /// @notice Transfers contract ownership to a new address (only current owner)
-    /// @param newOwner Address of the new owner
-    /// @dev Validates that new owner is not the zero address
+    /// @notice Transfers ownership of the contract to a new address
+    /// @dev Only current owner can transfer ownership. New owner gains all administrative privileges
+    /// @param newOwner The address that will become the new owner
     function transferOwnership(address newOwner) external onlyOwner {
-        require(newOwner != address(0), "New owner cannot be zero address");
+        require(newOwner != address(0), "Invalid address");
         owner = newOwner;
     }
 }
