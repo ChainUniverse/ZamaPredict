@@ -7,6 +7,7 @@ import { useContractWrite } from '@/hooks/useContract';
 import { useRewards } from '@/hooks/useRewards';
 import { userDecryptEuint32, userDecryptEbool } from '@/utils/fhe';
 import { DEFAULT_CONTRACT_ADDRESS } from '@/constants/config';
+import { EventReward } from '@/types';
 import LoadingSpinner from './LoadingSpinner';
 
 interface DecryptedData {
@@ -16,12 +17,6 @@ interface DecryptedData {
   isDecryptingDirection?: boolean;
   sharesError?: string;
   directionError?: string;
-}
-
-interface EventReward {
-  eventId: number;
-  pendingAmount: bigint;
-  claimed: boolean;
 }
 
 const MyBets: React.FC = () => {
@@ -494,10 +489,14 @@ const MyBets: React.FC = () => {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-2">
                             <Gift className="w-4 h-4 text-yellow-400" />
-                            <span className="text-white font-medium">Your Reward</span>
+                            <span className="text-white font-medium">
+                              {eventRewards[bet.eventId].withdrawn ? 'Reward Withdrawn' : 'Your Reward'}
+                            </span>
                           </div>
                           <div className="text-lg font-bold text-green-400">
-                            {formatEther(eventRewards[bet.eventId].pendingAmount)} ETH
+                            {formatEther(eventRewards[bet.eventId].withdrawn ? 
+                              eventRewards[bet.eventId].originalAmount : 
+                              eventRewards[bet.eventId].pendingAmount)} ETH
                           </div>
                         </div>
                         
@@ -521,7 +520,7 @@ const MyBets: React.FC = () => {
                           </button>
                         )}
                         
-                        {eventRewards[bet.eventId].pendingAmount === 0n && (
+                        {eventRewards[bet.eventId].pendingAmount === 0n && !eventRewards[bet.eventId].withdrawn && (
                           <div className="text-center text-white/60 text-sm">
                             {eventRewards[bet.eventId].claimed ? 
                               "You didn't win this prediction" : 

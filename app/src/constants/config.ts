@@ -121,6 +121,21 @@ export const PREDICTION_MARKET_ABI = [
   },
   {
     "inputs": [
+      { "internalType": "uint256", "name": "eventId", "type": "uint256" },
+      { "internalType": "address", "name": "user", "type": "address" }
+    ],
+    "name": "getRewardInfo",
+    "outputs": [
+      { "internalType": "uint256", "name": "amount", "type": "uint256" },
+      { "internalType": "uint256", "name": "originalAmount", "type": "uint256" },
+      { "internalType": "bool", "name": "claimed", "type": "bool" },
+      { "internalType": "bool", "name": "withdrawn", "type": "bool" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
       { "internalType": "uint256", "name": "eventId", "type": "uint256" }
     ],
     "name": "getPredicEvent",
@@ -239,7 +254,7 @@ export const PREDICTION_MARKET_ABI = [
 ] as const;
 
 // Default contract address (update after deployment)
-export const DEFAULT_CONTRACT_ADDRESS = "0x39a861c9c390D8B29BEaDc02810A205870e5E5ae";
+export const DEFAULT_CONTRACT_ADDRESS = "0x42B0C00B90cCdbB6Ccb1392a5Db313DdA7EF7CFc";
 
 // UI Constants
 export const UI_CONFIG = {
