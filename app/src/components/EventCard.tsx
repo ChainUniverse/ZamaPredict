@@ -7,9 +7,10 @@ import { getEventStatus, isEventActive } from '@/constants/config';
 interface EventCardProps {
   event: PredictionEvent;
   onBet?: (eventId: number) => void;
+  onResolve?: (eventId: number) => void;
 }
 
-const EventCard: React.FC<EventCardProps> = ({ event, onBet }) => {
+const EventCard: React.FC<EventCardProps> = ({ event, onBet, onResolve }) => {
   const status = getEventStatus(event.startTime, event.endTime, event.resolved);
   const canBet = isEventActive(event.startTime, event.endTime, event.resolved);
 
@@ -88,6 +89,23 @@ const EventCard: React.FC<EventCardProps> = ({ event, onBet }) => {
         </div>
       </div>
 
+      <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="text-sm">
+          <div className="flex items-center space-x-1 text-white/60 mb-1">
+            <span className="text-yellow-400">🔒</span>
+            <span>YES Total</span>
+          </div>
+          <div className="text-yellow-400 font-semibold">***</div>
+        </div>
+        <div className="text-sm">
+          <div className="flex items-center space-x-1 text-white/60 mb-1">
+            <span className="text-yellow-400">🔒</span>
+            <span>NO Total</span>
+          </div>
+          <div className="text-yellow-400 font-semibold">***</div>
+        </div>
+      </div>
+
       <div className="flex items-center justify-between text-sm text-white/60 mb-4">
         <div className="flex items-center space-x-1">
           <Users className="w-4 h-4" />
@@ -131,8 +149,19 @@ const EventCard: React.FC<EventCardProps> = ({ event, onBet }) => {
       )}
 
       {status === 'ended' && !event.resolved && (
-        <div className="text-center text-yellow-200 text-sm">
-          Waiting for resolution...
+        <div className="space-y-2">
+          <div className="text-center text-yellow-200 text-sm">
+            Waiting for resolution...
+          </div>
+          {onResolve && (
+            <button
+              onClick={() => onResolve(event.id)}
+              className="btn btn-secondary w-full flex items-center justify-center space-x-2"
+            >
+              <CheckCircle className="w-4 h-4" />
+              <span>Resolve Event</span>
+            </button>
+          )}
         </div>
       )}
     </div>

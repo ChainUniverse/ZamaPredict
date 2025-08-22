@@ -3,6 +3,7 @@ import { Calendar, Clock, TrendingUp, Users, RefreshCw, AlertTriangle } from 'lu
 import { useEvents, PredictionEvent } from '@/hooks/useEvents';
 import EventCard from './EventCard';
 import BetModal from './BetModal';
+import ResolveModal from './ResolveModal';
 
 interface EventListProps {
   refreshTrigger?: number;
@@ -12,6 +13,8 @@ const EventList: React.FC<EventListProps> = ({ refreshTrigger }) => {
   const { events, isLoading, error, refetch } = useEvents();
   const [selectedEvent, setSelectedEvent] = useState<PredictionEvent | null>(null);
   const [isBetModalOpen, setIsBetModalOpen] = useState(false);
+  const [selectedResolveEvent, setSelectedResolveEvent] = useState<PredictionEvent | null>(null);
+  const [isResolveModalOpen, setIsResolveModalOpen] = useState(false);
 
   // Refresh when trigger changes
   React.useEffect(() => {
@@ -35,6 +38,24 @@ const EventList: React.FC<EventListProps> = ({ refreshTrigger }) => {
 
   const handleBetSuccess = () => {
     // Refresh events list after successful bet
+    refetch();
+  };
+
+  const handleResolve = (eventId: number) => {
+    const event = events.find(e => e.id === eventId);
+    if (event) {
+      setSelectedResolveEvent(event);
+      setIsResolveModalOpen(true);
+    }
+  };
+
+  const handleResolveModalClose = () => {
+    setIsResolveModalOpen(false);
+    setSelectedResolveEvent(null);
+  };
+
+  const handleResolveSuccess = () => {
+    // Refresh events list after successful resolution
     refetch();
   };
 
@@ -118,6 +139,7 @@ const EventList: React.FC<EventListProps> = ({ refreshTrigger }) => {
               key={event.id}
               event={event}
               onBet={handleBet}
+              onResolve={handleResolve}
             />
           ))}
         </div>
@@ -175,6 +197,14 @@ const EventList: React.FC<EventListProps> = ({ refreshTrigger }) => {
         isOpen={isBetModalOpen}
         onClose={handleBetModalClose}
         onBetSuccess={handleBetSuccess}
+      />
+
+      {/* Resolve Modal */}
+      <ResolveModal
+        event={selectedResolveEvent}
+        isOpen={isResolveModalOpen}
+        onClose={handleResolveModalClose}
+        onResolveSuccess={handleResolveSuccess}
       />
     </div>
   );
