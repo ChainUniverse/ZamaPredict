@@ -3,17 +3,17 @@ import type { TaskArguments } from "hardhat/types";
 import { fhevm } from "hardhat";
 
 task("prediction:create-event")
-  .addParam("contract", "The PredictionMarket contract address")
   .addParam("description", "Event description")
   .addParam("starttime", "Start time (Unix timestamp)")
   .addParam("endtime", "End time (Unix timestamp)")
   .addParam("priceyes", "Price for YES bets in wei")
   .addParam("priceno", "Price for NO bets in wei")
-  .setAction(async function (taskArguments: TaskArguments, { ethers }) {
-    const { contract, description, starttime, endtime, priceyes, priceno } = taskArguments;
+  .setAction(async function (taskArguments: TaskArguments, { ethers, deployments }) {
+    const { description, starttime, endtime, priceyes, priceno } = taskArguments;
     
     const signers = await ethers.getSigners();
-    const predictionMarket = await ethers.getContractAt("PredictionMarket", contract);
+    const predictionMarketDeployment = await deployments.get("PredictionMarket");
+    const predictionMarket = await ethers.getContractAt("PredictionMarket", predictionMarketDeployment.address);
     
     console.log("Creating prediction event...");
     console.log("Description:", description);
@@ -39,17 +39,17 @@ task("prediction:create-event")
   });
 
 task("prediction:place-bet")
-  .addParam("contract", "The PredictionMarket contract address")
   .addParam("eventid", "Event ID")
   .addParam("shares", "Number of shares to buy")
   .addParam("direction", "Bet direction: 'yes' or 'no'")
   .addParam("payment", "Payment amount in wei")
-  .setAction(async function (taskArguments: TaskArguments, { ethers }) {
-    const { contract, eventid, shares, direction, payment } = taskArguments;
+  .setAction(async function (taskArguments: TaskArguments, { ethers, deployments }) {
+    const { eventid, shares, direction, payment } = taskArguments;
     
     const signers = await ethers.getSigners();
     const signer = signers[0];
-    const predictionMarket = await ethers.getContractAt("PredictionMarket", contract);
+    const predictionMarketDeployment = await deployments.get("PredictionMarket");
+    const predictionMarket = await ethers.getContractAt("PredictionMarket", predictionMarketDeployment.address);
     
     console.log("Placing encrypted bet...");
     console.log("Event ID:", eventid);
@@ -58,7 +58,7 @@ task("prediction:place-bet")
     console.log("Payment:", payment, "wei");
     
     // Create encrypted inputs
-    const input = fhevm.createEncryptedInput(contract, signer.address);
+    const input = fhevm.createEncryptedInput(predictionMarketDeployment.address, signer.address);
     input.add32(parseInt(shares));  // encrypted shares
     input.addBool(direction.toLowerCase() === "yes");  // encrypted direction
     const encryptedInput = await input.encrypt();
@@ -77,14 +77,14 @@ task("prediction:place-bet")
   });
 
 task("prediction:resolve-event")
-  .addParam("contract", "The PredictionMarket contract address")
   .addParam("eventid", "Event ID")
   .addParam("outcome", "Event outcome: 'yes' or 'no'")
-  .setAction(async function (taskArguments: TaskArguments, { ethers }) {
-    const { contract, eventid, outcome } = taskArguments;
+  .setAction(async function (taskArguments: TaskArguments, { ethers, deployments }) {
+    const { eventid, outcome } = taskArguments;
     
     const signers = await ethers.getSigners();
-    const predictionMarket = await ethers.getContractAt("PredictionMarket", contract);
+    const predictionMarketDeployment = await deployments.get("PredictionMarket");
+    const predictionMarket = await ethers.getContractAt("PredictionMarket", predictionMarketDeployment.address);
     
     console.log("Resolving event...");
     console.log("Event ID:", eventid);
@@ -101,13 +101,13 @@ task("prediction:resolve-event")
   });
 
 task("prediction:claim-rewards")
-  .addParam("contract", "The PredictionMarket contract address")
   .addParam("eventid", "Event ID")
-  .setAction(async function (taskArguments: TaskArguments, { ethers }) {
-    const { contract, eventid } = taskArguments;
+  .setAction(async function (taskArguments: TaskArguments, { ethers, deployments }) {
+    const { eventid } = taskArguments;
     
     const signers = await ethers.getSigners();
-    const predictionMarket = await ethers.getContractAt("PredictionMarket", contract);
+    const predictionMarketDeployment = await deployments.get("PredictionMarket");
+    const predictionMarket = await ethers.getContractAt("PredictionMarket", predictionMarketDeployment.address);
     
     console.log("Claiming rewards for event:", eventid);
     
@@ -119,12 +119,12 @@ task("prediction:claim-rewards")
   });
 
 task("prediction:get-event")
-  .addParam("contract", "The PredictionMarket contract address")
   .addParam("eventid", "Event ID")
-  .setAction(async function (taskArguments: TaskArguments, { ethers }) {
-    const { contract, eventid } = taskArguments;
+  .setAction(async function (taskArguments: TaskArguments, { ethers, deployments }) {
+    const { eventid } = taskArguments;
     
-    const predictionMarket = await ethers.getContractAt("PredictionMarket", contract);
+    const predictionMarketDeployment = await deployments.get("PredictionMarket");
+    const predictionMarket = await ethers.getContractAt("PredictionMarket", predictionMarketDeployment.address);
     
     const event = await predictionMarket.getPredictionEvent(eventid);
     
@@ -143,15 +143,15 @@ task("prediction:get-event")
   });
 
 task("prediction:get-user-bet")
-  .addParam("contract", "The PredictionMarket contract address")
   .addParam("eventid", "Event ID")
   .addParam("user", "User address")
-  .setAction(async function (taskArguments: TaskArguments, { ethers }) {
-    const { contract, eventid, user } = taskArguments;
+  .setAction(async function (taskArguments: TaskArguments, { ethers, deployments }) {
+    const { eventid, user } = taskArguments;
     
     const signers = await ethers.getSigners();
     const signer = signers[0];
-    const predictionMarket = await ethers.getContractAt("PredictionMarket", contract);
+    const predictionMarketDeployment = await deployments.get("PredictionMarket");
+    const predictionMarket = await ethers.getContractAt("PredictionMarket", predictionMarketDeployment.address);
     
     const bet = await predictionMarket.getUserBet(eventid, user);
     
@@ -164,7 +164,7 @@ task("prediction:get-user-bet")
         const decryptedAmount = await fhevm.userDecryptEuint(
           "euint64",
           bet.encryptedAmount,
-          contract,
+          predictionMarketDeployment.address,
           signer
         );
         console.log("Bet amount:", decryptedAmount.toString(), "wei");
@@ -172,14 +172,14 @@ task("prediction:get-user-bet")
         const decryptedShares = await fhevm.userDecryptEuint(
           "euint32", 
           bet.encryptedShares,
-          contract,
+          predictionMarketDeployment.address,
           signer
         );
         console.log("Shares:", decryptedShares.toString());
         
         const decryptedDirection = await fhevm.userDecryptEbool(
           bet.isYesBet,
-          contract,
+          predictionMarketDeployment.address,
           signer
         );
         console.log("Direction:", decryptedDirection ? "YES" : "NO");
@@ -193,11 +193,9 @@ task("prediction:get-user-bet")
   });
 
 task("prediction:list-events")
-  .addParam("contract", "The PredictionMarket contract address")
-  .setAction(async function (taskArguments: TaskArguments, { ethers }) {
-    const { contract } = taskArguments;
-    
-    const predictionMarket = await ethers.getContractAt("PredictionMarket", contract);
+  .setAction(async function (taskArguments: TaskArguments, { ethers, deployments }) {
+    const predictionMarketDeployment = await deployments.get("PredictionMarket");
+    const predictionMarket = await ethers.getContractAt("PredictionMarket", predictionMarketDeployment.address);
     
     const eventCount = await predictionMarket.getEventCount();
     console.log("Total events:", eventCount.toString());
