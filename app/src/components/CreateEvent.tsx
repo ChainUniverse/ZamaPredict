@@ -89,8 +89,8 @@ const CreateEvent: React.FC<CreateEventProps> = ({ onEventCreated }) => {
                 <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
                   type="number"
-                  step="0.001"
-                  min="0.001"
+                  step="0.00001"
+                  min="0.0001"
                   className="input pl-10"
                   placeholder="0.1"
                   required
@@ -103,8 +103,8 @@ const CreateEvent: React.FC<CreateEventProps> = ({ onEventCreated }) => {
                 <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
                   type="number"
-                  step="0.001"
-                  min="0.001"
+                  step="0.00001"
+                  min="0.0001"
                   className="input pl-10"
                   placeholder="0.1"
                   required

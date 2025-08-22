@@ -19,11 +19,11 @@ export const formatTimestamp = (timestamp: number): string => {
 export const formatTimeRemaining = (timestamp: number): string => {
   const now = Date.now();
   const targetTime = timestamp * 1000;
-  
+
   if (targetTime <= now) {
     return 'Ended';
   }
-  
+
   return `Ends ${formatDistanceToNow(new Date(targetTime), { addSuffix: true })}`;
 };
 
@@ -33,7 +33,7 @@ export const getEventStatus = (
   isResolved: boolean
 ): EventStatus => {
   const now = Math.floor(Date.now() / 1000);
-  
+
   if (isResolved) return 'resolved';
   if (now < startTime) return 'upcoming';
   if (now >= startTime && now <= endTime) return 'active';
@@ -81,11 +81,11 @@ export const getStatusBadgeColor = (status: EventStatus): string => {
 
 export const calculateOdds = (yesShares: number, noShares: number): { yes: number; no: number } => {
   const total = yesShares + noShares;
-  
+
   if (total === 0) {
     return { yes: 50, no: 50 };
   }
-  
+
   return {
     yes: Math.round((yesShares / total) * 100),
     no: Math.round((noShares / total) * 100)
@@ -99,7 +99,7 @@ export const calculatePotentialWinnings = (
   totalPool: number
 ): number => {
   if (totalWinningShares === 0) return 0;
-  
+
   return (totalPool * userShares) / totalWinningShares;
 };
 
@@ -120,33 +120,33 @@ export const copyToClipboard = async (text: string): Promise<boolean> => {
 
 export const validateBetAmount = (amount: string, maxAmount: number = 10): string | null => {
   const num = parseFloat(amount);
-  
+
   if (isNaN(num) || num <= 0) {
     return 'Please enter a valid amount';
   }
-  
-  if (num < 0.001) {
-    return 'Minimum bet amount is 0.001 ETH';
+
+  if (num < 0.0001) {
+    return 'Minimum bet amount is 0.0001 ETH';
   }
-  
+
   if (num > maxAmount) {
     return `Maximum bet amount is ${maxAmount} ETH`;
   }
-  
+
   return null;
 };
 
 export const validateShares = (shares: string): string | null => {
   const num = parseInt(shares);
-  
+
   if (isNaN(num) || num <= 0) {
     return 'Please enter a valid number of shares';
   }
-  
+
   if (num > 1000) {
     return 'Maximum 1000 shares allowed';
   }
-  
+
   return null;
 };
 
@@ -154,20 +154,20 @@ export const validateEventDates = (startTime: string, endTime: string): string |
   const start = new Date(startTime);
   const end = new Date(endTime);
   const now = new Date();
-  
+
   if (start <= now) {
     return 'Start time must be in the future';
   }
-  
+
   if (end <= start) {
     return 'End time must be after start time';
   }
-  
+
   const minDuration = 5 * 60 * 1000; // 5 minutes
   if (end.getTime() - start.getTime() < minDuration) {
     return 'Event must last at least 5 minutes';
   }
-  
+
   return null;
 };
 
@@ -184,7 +184,7 @@ export const debounce = <T extends (...args: any[]) => any>(
   delay: number
 ): ((...args: Parameters<T>) => void) => {
   let timeoutId: NodeJS.Timeout;
-  
+
   return (...args: Parameters<T>) => {
     clearTimeout(timeoutId);
     timeoutId = setTimeout(() => func(...args), delay);
@@ -196,7 +196,7 @@ export const throttle = <T extends (...args: any[]) => any>(
   delay: number
 ): ((...args: Parameters<T>) => void) => {
   let lastCall = 0;
-  
+
   return (...args: Parameters<T>) => {
     const now = Date.now();
     if (now - lastCall >= delay) {

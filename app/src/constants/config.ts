@@ -61,7 +61,7 @@ export const DEFAULT_CONTRACT_ADDRESS = "0x042155e8Ee5688adEBe209E3a04668b7fB101
 export const UI_CONFIG = {
   REFRESH_INTERVAL: 5000, // 5 seconds
   MAX_DESCRIPTION_LENGTH: 200,
-  MIN_BET_AMOUNT: 0.001, // Minimum bet in ETH
+  MIN_BET_AMOUNT: 0.0001, // Minimum bet in ETH
   MAX_BET_AMOUNT: 10,    // Maximum bet in ETH
   DATE_FORMAT: 'yyyy-MM-dd HH:mm',
   CURRENCY_DECIMALS: 4,
