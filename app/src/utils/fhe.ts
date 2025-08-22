@@ -61,7 +61,7 @@ export const decryptUserData = async (
   encryptedHandle: string,
   _dataType: 'euint32' | 'euint64' | 'ebool',
   contractAddress: string,
-  signer: any
+  walletClient: any
 ): Promise<any> => {
   const instance = getFHEInstance();
 
@@ -83,21 +83,15 @@ export const decryptUserData = async (
       durationDays
     );
 
-    // const signature = await signer.signTypedData(
-    //   eip712.domain,
-    //   {
-    //     UserDecryptRequestVerification: eip712.types.UserDecryptRequestVerification,
-    //   },
-    //   eip712.message
-    // );
-
-    const signature = await signer.signTypedData({
+    // For Wagmi v2 walletClient, we need to use the correct interface
+    const signature = await walletClient.signTypedData({
+      account: walletClient.account,
       domain: eip712.domain,
       types: {
         UserDecryptRequestVerification: eip712.types.UserDecryptRequestVerification,
       },
       primaryType: 'UserDecryptRequestVerification',
-      message: eip712.message,
+      message: eip712.message
     });
 
     const result = await instance.userDecrypt(
@@ -106,7 +100,7 @@ export const decryptUserData = async (
       keypair.publicKey,
       signature.replace("0x", ""),
       contractAddresses,
-      signer.address,
+      walletClient.account.address,
       startTimeStamp,
       durationDays
     );
@@ -114,41 +108,41 @@ export const decryptUserData = async (
     return result[encryptedHandle];
   } catch (error) {
     console.error('Failed to decrypt data:', error);
-    throw new Error('Failed to decrypt encrypted data');
+    throw new Error(`Failed to decrypt encrypted data: ${error.message}`);
   }
 };
 
 export const userDecryptEbool = async (
   encryptedHandle: string,
   contractAddress: string,
-  signer: any
+  walletClient: any
 ): Promise<boolean> => {
-  const result = await decryptUserData(encryptedHandle, 'ebool', contractAddress, signer);
+  const result = await decryptUserData(encryptedHandle, 'ebool', contractAddress, walletClient);
   return Boolean(result);
 };
 
 export const userDecryptEuint32 = async (
   encryptedHandle: string,
   contractAddress: string,
-  signer: any
+  walletClient: any
 ): Promise<number> => {
-  const result = await decryptUserData(encryptedHandle, 'euint32', contractAddress, signer);
+  const result = await decryptUserData(encryptedHandle, 'euint32', contractAddress, walletClient);
   return Number(result);
 };
 
 export const userDecryptEuint64 = async (
   encryptedHandle: string,
   contractAddress: string,
-  signer: any
+  walletClient: any
 ): Promise<bigint> => {
-  const result = await decryptUserData(encryptedHandle, 'euint64', contractAddress, signer);
+  const result = await decryptUserData(encryptedHandle, 'euint64', contractAddress, walletClient);
   return BigInt(result);
 };
 
 export const createUserDecryptionRequest = async (
   contractAddress: string,
   handles: string[],
-  signer: any
+  walletClient: any
 ) => {
   const instance = getFHEInstance();
 
@@ -170,13 +164,16 @@ export const createUserDecryptionRequest = async (
       durationDays
     );
 
-    const signature = await signer.signTypedData(
-      eip712.domain,
-      {
+    // For Wagmi v2 walletClient, we need to use the correct interface
+    const signature = await walletClient.signTypedData({
+      account: walletClient.account,
+      domain: eip712.domain,
+      types: {
         UserDecryptRequestVerification: eip712.types.UserDecryptRequestVerification,
       },
-      eip712.message
-    );
+      primaryType: 'UserDecryptRequestVerification',
+      message: eip712.message
+    });
 
     const result = await instance.userDecrypt(
       handleContractPairs,
@@ -184,7 +181,7 @@ export const createUserDecryptionRequest = async (
       keypair.publicKey,
       signature.replace("0x", ""),
       contractAddresses,
-      signer.address,
+      walletClient.account.address,
       startTimeStamp,
       durationDays
     );
@@ -192,7 +189,7 @@ export const createUserDecryptionRequest = async (
     return result;
   } catch (error) {
     console.error('Failed to create user decryption request:', error);
-    throw new Error('Failed to decrypt user data');
+    throw new Error(`Failed to decrypt user data: ${error.message}`);
   }
 };
 
