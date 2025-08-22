@@ -90,6 +90,39 @@ export const PREDICTION_MARKET_ABI = [
     "inputs": [
       { "internalType": "uint256", "name": "eventId", "type": "uint256" }
     ],
+    "name": "withdrawReward",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "eventId", "type": "uint256" },
+      { "internalType": "address", "name": "user", "type": "address" }
+    ],
+    "name": "getPendingReward",
+    "outputs": [
+      { "internalType": "uint256", "name": "", "type": "uint256" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "eventId", "type": "uint256" },
+      { "internalType": "address", "name": "user", "type": "address" }
+    ],
+    "name": "hasClaimedReward",
+    "outputs": [
+      { "internalType": "bool", "name": "", "type": "bool" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "eventId", "type": "uint256" }
+    ],
     "name": "getPredicEvent",
     "outputs": [
       {
@@ -183,11 +216,30 @@ export const PREDICTION_MARKET_ABI = [
     ],
     "name": "EventResolved",
     "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "internalType": "address", "name": "user", "type": "address" },
+      { "indexed": true, "internalType": "uint256", "name": "eventId", "type": "uint256" },
+      { "indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256" }
+    ],
+    "name": "RewardCalculated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "internalType": "address", "name": "user", "type": "address" },
+      { "indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256" }
+    ],
+    "name": "RewardWithdrawn",
+    "type": "event"
   }
 ] as const;
 
 // Default contract address (update after deployment)
-export const DEFAULT_CONTRACT_ADDRESS = "0x4194003193F535d97fdca1a31778FBBCbf5e98dC";
+export const DEFAULT_CONTRACT_ADDRESS = "0x39a861c9c390D8B29BEaDc02810A205870e5E5ae";
 
 // UI Constants
 export const UI_CONFIG = {

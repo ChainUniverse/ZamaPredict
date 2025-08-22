@@ -107,8 +107,9 @@ export const decryptUserData = async (
 
     return result[encryptedHandle];
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Failed to decrypt data:', error);
-    throw new Error(`Failed to decrypt encrypted data: ${error.message}`);
+    throw new Error(`Failed to decrypt encrypted data: ${errorMessage}`);
   }
 };
 
@@ -188,8 +189,9 @@ export const createUserDecryptionRequest = async (
 
     return result;
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Failed to create user decryption request:', error);
-    throw new Error(`Failed to decrypt user data: ${error.message}`);
+    throw new Error(`Failed to decrypt user data: ${errorMessage}`);
   }
 };
 

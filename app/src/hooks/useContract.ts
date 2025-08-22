@@ -146,10 +146,40 @@ export const useContractWrite = () => {
     }
   };
 
+  const withdrawReward = async (eventId: number) => {
+    if (!walletClient || !address) {
+      throw new Error('Wallet not connected');
+    }
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const hash = await writeContractAsync({
+        address: DEFAULT_CONTRACT_ADDRESS as `0x${string}`,
+        abi: PREDICTION_MARKET_ABI,
+        functionName: 'withdrawReward',
+        args: [BigInt(eventId)],
+      });
+
+      console.log('Reward withdrawn successfully, tx hash:', hash);
+      return hash;
+
+    } catch (err: any) {
+      console.error('Error withdrawing reward:', err);
+      const errorMessage = err.message || 'Failed to withdraw reward';
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return {
     placeBet,
     resolveBet,
     claimWinnings,
+    withdrawReward,
     isLoading,
     error
   };

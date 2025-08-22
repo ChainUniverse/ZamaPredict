@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAccount, useWalletClient } from 'wagmi';
 import { formatEther } from 'viem';
-import { TrendingUp, TrendingDown, Clock, CheckCircle, ExternalLink, Wallet, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { TrendingUp, TrendingDown, Clock, CheckCircle, ExternalLink, Wallet, AlertCircle, Eye, EyeOff, Gift } from 'lucide-react';
 import { useUserBets } from '@/hooks/useUserBets';
 import { useContractWrite } from '@/hooks/useContract';
-import { userDecryptEuint32, userDecryptEbool, formatEncryptedValue } from '@/utils/fhe';
+import { useRewards } from '@/hooks/useRewards';
+import { userDecryptEuint32, userDecryptEbool } from '@/utils/fhe';
 import { DEFAULT_CONTRACT_ADDRESS } from '@/constants/config';
 import LoadingSpinner from './LoadingSpinner';
 
@@ -17,12 +18,21 @@ interface DecryptedData {
   directionError?: string;
 }
 
+interface EventReward {
+  eventId: number;
+  pendingAmount: bigint;
+  claimed: boolean;
+}
+
 const MyBets: React.FC = () => {
   const { isConnected } = useAccount();
   const { data: walletClient } = useWalletClient();
   const { bets, isLoading, error, refetch } = useUserBets();
-  const { claimWinnings, isLoading: isClaimingRewards } = useContractWrite();
+  const { claimWinnings, withdrawReward, isLoading: isClaimingRewards } = useContractWrite();
+  const { getUserRewardForEvent } = useRewards();
   const [decryptedBets, setDecryptedBets] = useState<Record<string, DecryptedData>>({});
+  const [eventRewards, setEventRewards] = useState<Record<number, EventReward>>({});
+  const [loadingRewards, setLoadingRewards] = useState<Record<number, boolean>>({});
 
   const handleDecryptDirection = async (bet: any) => {
     if (!walletClient) {
@@ -143,6 +153,47 @@ const MyBets: React.FC = () => {
       console.error('Failed to claim rewards:', error);
     }
   };
+
+  const checkRewardForEvent = async (eventId: number) => {
+    if (loadingRewards[eventId] || !isConnected) return;
+    
+    setLoadingRewards(prev => ({ ...prev, [eventId]: true }));
+    try {
+      const rewardData = await getUserRewardForEvent(eventId);
+      setEventRewards(prev => ({ 
+        ...prev, 
+        [eventId]: rewardData 
+      }));
+    } catch (error) {
+      console.error('Failed to check reward:', error);
+    } finally {
+      setLoadingRewards(prev => ({ ...prev, [eventId]: false }));
+    }
+  };
+
+  const handleWithdrawReward = async (eventId: number) => {
+    try {
+      await withdrawReward(eventId);
+      // Refresh rewards after withdrawal
+      setTimeout(() => {
+        checkRewardForEvent(eventId);
+        refetch();
+      }, 2000);
+    } catch (error) {
+      console.error('Failed to withdraw reward:', error);
+    }
+  };
+
+  // Check rewards for resolved events
+  useEffect(() => {
+    if (bets.length > 0) {
+      bets.forEach(bet => {
+        if (bet.event?.resolved && bet.event?.decryptionDone && !eventRewards[bet.eventId]) {
+          checkRewardForEvent(bet.eventId);
+        }
+      });
+    }
+  }, [bets, isConnected]);
 
   const getBetStatus = (bet: any) => {
     if (!bet.event) return { status: 'unknown', color: 'gray', text: 'Unknown Event' };
@@ -429,6 +480,67 @@ const MyBets: React.FC = () => {
                     )}
                   </div>
                 </div>
+
+                {/* Show reward information for resolved events */}
+                {bet.event?.resolved && bet.event?.decryptionDone && (
+                  <div className="mt-4 pt-4 border-t border-white/10">
+                    {loadingRewards[bet.eventId] ? (
+                      <div className="flex items-center space-x-2 text-white/60">
+                        <LoadingSpinner />
+                        <span>Checking rewards...</span>
+                      </div>
+                    ) : eventRewards[bet.eventId] ? (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <Gift className="w-4 h-4 text-yellow-400" />
+                            <span className="text-white font-medium">Your Reward</span>
+                          </div>
+                          <div className="text-lg font-bold text-green-400">
+                            {formatEther(eventRewards[bet.eventId].pendingAmount)} ETH
+                          </div>
+                        </div>
+                        
+                        {eventRewards[bet.eventId].pendingAmount > 0n && (
+                          <button
+                            onClick={() => handleWithdrawReward(bet.eventId)}
+                            disabled={isClaimingRewards}
+                            className="btn btn-success w-full flex items-center justify-center space-x-2"
+                          >
+                            {isClaimingRewards ? (
+                              <>
+                                <LoadingSpinner />
+                                <span>Withdrawing...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Wallet className="w-4 h-4" />
+                                <span>Withdraw Reward</span>
+                              </>
+                            )}
+                          </button>
+                        )}
+                        
+                        {eventRewards[bet.eventId].pendingAmount === 0n && (
+                          <div className="text-center text-white/60 text-sm">
+                            {eventRewards[bet.eventId].claimed ? 
+                              "You didn't win this prediction" : 
+                              "No rewards available"
+                            }
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => checkRewardForEvent(bet.eventId)}
+                        className="btn btn-secondary flex items-center space-x-2"
+                      >
+                        <Gift className="w-4 h-4" />
+                        <span>Check Rewards</span>
+                      </button>
+                    )}
+                  </div>
+                )}
 
                 {betStatus.status === 'resolved-unclaimed' && (
                   <div className="mt-4 pt-4 border-t border-white/10">
