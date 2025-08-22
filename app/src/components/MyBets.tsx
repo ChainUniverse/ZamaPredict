@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAccount } from 'wagmi';
 import { formatEther } from 'viem';
-import { TrendingUp, TrendingDown, Clock, CheckCircle, XCircle, ExternalLink, Wallet, AlertCircle } from 'lucide-react';
+import { TrendingUp, TrendingDown, Clock, CheckCircle, ExternalLink, Wallet, AlertCircle } from 'lucide-react';
 import { useUserBets } from '@/hooks/useUserBets';
 import { useContractWrite } from '@/hooks/useContract';
 import LoadingSpinner from './LoadingSpinner';
@@ -32,17 +32,12 @@ const MyBets: React.FC = () => {
       }
     }
     
-    // Event is resolved
-    const userBetYes = bet.isYes === 'true';
-    const eventOutcome = bet.event.outcome;
-    const won = userBetYes === eventOutcome;
-    
-    if (won && !bet.claimed) {
-      return { status: 'won-unclaimed', color: 'green', text: 'Won - Claim Rewards' };
-    } else if (won && bet.claimed) {
-      return { status: 'won-claimed', color: 'green', text: 'Won - Claimed' };
+    // Event is resolved but we can't determine win/loss without decrypting user's bet
+    // User needs to claim to find out the result
+    if (!bet.claimed) {
+      return { status: 'resolved-unclaimed', color: 'blue', text: 'Resolved - Check Result' };
     } else {
-      return { status: 'lost', color: 'red', text: 'Lost' };
+      return { status: 'resolved-claimed', color: 'gray', text: 'Resolved - Claimed' };
     }
   };
 
@@ -56,21 +51,14 @@ const MyBets: React.FC = () => {
     });
   };
 
-  const getDirectionIcon = (isYes: string) => {
-    return isYes === 'true' ? (
-      <TrendingUp className="w-4 h-4 text-green-400" />
-    ) : (
-      <TrendingDown className="w-4 h-4 text-red-400" />
-    );
-  };
+  // Remove this function as we no longer show the direction
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'won-unclaimed':
-      case 'won-claimed':
-        return <CheckCircle className="w-4 h-4 text-green-400" />;
-      case 'lost':
-        return <XCircle className="w-4 h-4 text-red-400" />;
+      case 'resolved-unclaimed':
+        return <CheckCircle className="w-4 h-4 text-blue-400" />;
+      case 'resolved-claimed':
+        return <CheckCircle className="w-4 h-4 text-gray-400" />;
       case 'pending':
         return <Clock className="w-4 h-4 text-yellow-400" />;
       case 'active':
@@ -144,7 +132,6 @@ const MyBets: React.FC = () => {
         <div className="space-y-4">
           {bets.map((bet) => {
             const betStatus = getBetStatus(bet);
-            const userBetYes = bet.isYes === 'true';
             
             return (
               <div
@@ -189,27 +176,30 @@ const MyBets: React.FC = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div className="bg-white/5 rounded-lg p-3">
                     <div className="flex items-center space-x-2 mb-1">
-                      {getDirectionIcon(bet.isYes)}
+                      <span className="text-yellow-400">🔒</span>
                       <span className="text-sm font-medium text-white">
                         Your Prediction
                       </span>
                     </div>
-                    <div className={`font-semibold ${userBetYes ? 'text-green-400' : 'text-red-400'}`}>
-                      {userBetYes ? 'YES' : 'NO'}
+                    <div className="font-semibold text-yellow-400">
+                      ***
                     </div>
                   </div>
 
                   <div className="bg-white/5 rounded-lg p-3">
                     <div className="text-sm text-white/60 mb-1">Amount Bet</div>
                     <div className="font-semibold text-white truncate">
-                      {Number(formatEther(bet.amount)).toFixed(6)} ETH
+                      {Number(formatEther(bet.amount)).toFixed(4)} ETH
                     </div>
                   </div>
 
                   <div className="bg-white/5 rounded-lg p-3">
-                    <div className="text-sm text-white/60 mb-1">Shares</div>
-                    <div className="font-semibold text-white truncate">
-                      {bet.shares.length > 20 ? bet.shares.substring(0, 8) + '...' : bet.shares}
+                    <div className="flex items-center space-x-2 mb-1">
+                      <span className="text-yellow-400">🔒</span>
+                      <span className="text-sm text-white/60">Shares</span>
+                    </div>
+                    <div className="font-semibold text-yellow-400 truncate">
+                      ***
                     </div>
                   </div>
 
@@ -237,7 +227,7 @@ const MyBets: React.FC = () => {
                   </div>
                 </div>
 
-                {betStatus.status === 'won-unclaimed' && (
+                {betStatus.status === 'resolved-unclaimed' && (
                   <div className="mt-4 pt-4 border-t border-white/10">
                     <button
                       onClick={() => handleClaimRewards(bet.eventId)}
@@ -252,7 +242,7 @@ const MyBets: React.FC = () => {
                       ) : (
                         <>
                           <CheckCircle className="w-4 h-4" />
-                          <span>Claim Rewards</span>
+                          <span>Check Result & Claim</span>
                         </>
                       )}
                     </button>

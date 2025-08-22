@@ -44,11 +44,11 @@ export const ERROR_MESSAGES = {
 export const PREDICTION_MARKET_ABI = [
   {
     "inputs": [
-      {"internalType": "string", "name": "desc", "type": "string"},
-      {"internalType": "uint256", "name": "start", "type": "uint256"},
-      {"internalType": "uint256", "name": "end", "type": "uint256"},
-      {"internalType": "uint256", "name": "yesPrice", "type": "uint256"},
-      {"internalType": "uint256", "name": "noPrice", "type": "uint256"}
+      { "internalType": "string", "name": "desc", "type": "string" },
+      { "internalType": "uint256", "name": "start", "type": "uint256" },
+      { "internalType": "uint256", "name": "end", "type": "uint256" },
+      { "internalType": "uint256", "name": "yesPrice", "type": "uint256" },
+      { "internalType": "uint256", "name": "noPrice", "type": "uint256" }
     ],
     "name": "createEvent",
     "outputs": [],
@@ -57,10 +57,10 @@ export const PREDICTION_MARKET_ABI = [
   },
   {
     "inputs": [
-      {"internalType": "uint256", "name": "eventId", "type": "uint256"},
-      {"internalType": "externalEuint32", "name": "shares", "type": "bytes32"},
-      {"internalType": "externalEbool", "name": "isYes", "type": "bytes32"},
-      {"internalType": "bytes", "name": "proof", "type": "bytes"}
+      { "internalType": "uint256", "name": "eventId", "type": "uint256" },
+      { "internalType": "externalEuint32", "name": "shares", "type": "bytes32" },
+      { "internalType": "externalEbool", "name": "isYes", "type": "bytes32" },
+      { "internalType": "bytes", "name": "proof", "type": "bytes" }
     ],
     "name": "placeBet",
     "outputs": [],
@@ -69,8 +69,8 @@ export const PREDICTION_MARKET_ABI = [
   },
   {
     "inputs": [
-      {"internalType": "uint256", "name": "eventId", "type": "uint256"},
-      {"internalType": "bool", "name": "outcome", "type": "bool"}
+      { "internalType": "uint256", "name": "eventId", "type": "uint256" },
+      { "internalType": "bool", "name": "outcome", "type": "bool" }
     ],
     "name": "resolveEvent",
     "outputs": [],
@@ -79,7 +79,7 @@ export const PREDICTION_MARKET_ABI = [
   },
   {
     "inputs": [
-      {"internalType": "uint256", "name": "eventId", "type": "uint256"}
+      { "internalType": "uint256", "name": "eventId", "type": "uint256" }
     ],
     "name": "claimReward",
     "outputs": [],
@@ -88,26 +88,26 @@ export const PREDICTION_MARKET_ABI = [
   },
   {
     "inputs": [
-      {"internalType": "uint256", "name": "eventId", "type": "uint256"}
+      { "internalType": "uint256", "name": "eventId", "type": "uint256" }
     ],
     "name": "getPredicEvent",
     "outputs": [
       {
         "components": [
-          {"internalType": "uint256", "name": "id", "type": "uint256"},
-          {"internalType": "string", "name": "description", "type": "string"},
-          {"internalType": "uint256", "name": "startTime", "type": "uint256"},
-          {"internalType": "uint256", "name": "endTime", "type": "uint256"},
-          {"internalType": "uint256", "name": "priceYes", "type": "uint256"},
-          {"internalType": "uint256", "name": "priceNo", "type": "uint256"},
-          {"internalType": "bool", "name": "resolved", "type": "bool"},
-          {"internalType": "bool", "name": "outcome", "type": "bool"},
-          {"internalType": "uint256", "name": "totalEth", "type": "uint256"},
-          {"internalType": "euint64", "name": "totalYes", "type": "bytes32"},
-          {"internalType": "euint64", "name": "totalNo", "type": "bytes32"},
-          {"internalType": "uint256", "name": "decryptedYes", "type": "uint256"},
-          {"internalType": "uint256", "name": "decryptedNo", "type": "uint256"},
-          {"internalType": "bool", "name": "decryptionDone", "type": "bool"}
+          { "internalType": "uint256", "name": "id", "type": "uint256" },
+          { "internalType": "string", "name": "description", "type": "string" },
+          { "internalType": "uint256", "name": "startTime", "type": "uint256" },
+          { "internalType": "uint256", "name": "endTime", "type": "uint256" },
+          { "internalType": "uint256", "name": "priceYes", "type": "uint256" },
+          { "internalType": "uint256", "name": "priceNo", "type": "uint256" },
+          { "internalType": "bool", "name": "resolved", "type": "bool" },
+          { "internalType": "bool", "name": "outcome", "type": "bool" },
+          { "internalType": "uint256", "name": "totalEth", "type": "uint256" },
+          { "internalType": "euint64", "name": "totalYes", "type": "bytes32" },
+          { "internalType": "euint64", "name": "totalNo", "type": "bytes32" },
+          { "internalType": "uint256", "name": "decryptedYes", "type": "uint256" },
+          { "internalType": "uint256", "name": "decryptedNo", "type": "uint256" },
+          { "internalType": "bool", "name": "decryptionDone", "type": "bool" }
         ],
         "internalType": "struct PredictionMarket.Event",
         "name": "",
@@ -119,17 +119,18 @@ export const PREDICTION_MARKET_ABI = [
   },
   {
     "inputs": [
-      {"internalType": "uint256", "name": "eventId", "type": "uint256"},
-      {"internalType": "address", "name": "user", "type": "address"}
+      { "internalType": "uint256", "name": "eventId", "type": "uint256" },
+      { "internalType": "address", "name": "user", "type": "address" }
     ],
     "name": "getBet",
     "outputs": [
       {
         "components": [
-          {"internalType": "euint64", "name": "amount", "type": "bytes32"},
-          {"internalType": "euint32", "name": "shares", "type": "bytes32"},
-          {"internalType": "ebool", "name": "isYes", "type": "bytes32"},
-          {"internalType": "bool", "name": "placed", "type": "bool"}
+          { "internalType": "euint64", "name": "amount", "type": "bytes32" },
+          { "internalType": "euint32", "name": "shares", "type": "bytes32" },
+          { "internalType": "ebool", "name": "isYes", "type": "bytes32" },
+          { "internalType": "bool", "name": "placed", "type": "bool" },
+          { "internalType": "uint256", "name": "actualEthAmount", "type": "uint256" }
         ],
         "internalType": "struct PredictionMarket.Bet",
         "name": "",
@@ -143,7 +144,7 @@ export const PREDICTION_MARKET_ABI = [
     "inputs": [],
     "name": "getEventCount",
     "outputs": [
-      {"internalType": "uint256", "name": "", "type": "uint256"}
+      { "internalType": "uint256", "name": "", "type": "uint256" }
     ],
     "stateMutability": "view",
     "type": "function"
@@ -152,7 +153,7 @@ export const PREDICTION_MARKET_ABI = [
     "inputs": [],
     "name": "owner",
     "outputs": [
-      {"internalType": "address", "name": "", "type": "address"}
+      { "internalType": "address", "name": "", "type": "address" }
     ],
     "stateMutability": "view",
     "type": "function"
@@ -160,8 +161,8 @@ export const PREDICTION_MARKET_ABI = [
   {
     "anonymous": false,
     "inputs": [
-      {"indexed": true, "internalType": "uint256", "name": "eventId", "type": "uint256"},
-      {"indexed": false, "internalType": "string", "name": "description", "type": "string"}
+      { "indexed": true, "internalType": "uint256", "name": "eventId", "type": "uint256" },
+      { "indexed": false, "internalType": "string", "name": "description", "type": "string" }
     ],
     "name": "EventCreated",
     "type": "event"
@@ -169,8 +170,8 @@ export const PREDICTION_MARKET_ABI = [
   {
     "anonymous": false,
     "inputs": [
-      {"indexed": true, "internalType": "uint256", "name": "eventId", "type": "uint256"},
-      {"indexed": true, "internalType": "address", "name": "user", "type": "address"}
+      { "indexed": true, "internalType": "uint256", "name": "eventId", "type": "uint256" },
+      { "indexed": true, "internalType": "address", "name": "user", "type": "address" }
     ],
     "name": "BetPlaced",
     "type": "event"
@@ -178,8 +179,8 @@ export const PREDICTION_MARKET_ABI = [
   {
     "anonymous": false,
     "inputs": [
-      {"indexed": true, "internalType": "uint256", "name": "eventId", "type": "uint256"},
-      {"indexed": false, "internalType": "bool", "name": "outcome", "type": "bool"}
+      { "indexed": true, "internalType": "uint256", "name": "eventId", "type": "uint256" },
+      { "indexed": false, "internalType": "bool", "name": "outcome", "type": "bool" }
     ],
     "name": "EventResolved",
     "type": "event"
@@ -187,7 +188,7 @@ export const PREDICTION_MARKET_ABI = [
 ] as const;
 
 // Default contract address (update after deployment)
-export const DEFAULT_CONTRACT_ADDRESS = "0x042155e8Ee5688adEBe209E3a04668b7fB10153e";
+export const DEFAULT_CONTRACT_ADDRESS = "0x1576cBab1c2Dc2792fD51aE0e0a2a4F332b7B27C";
 
 // UI Constants
 export const UI_CONFIG = {

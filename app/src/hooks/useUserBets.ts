@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { usePublicClient, useAccount } from 'wagmi';
-import { getContract, parseAbiItem } from 'viem';
+import { getContract } from 'viem';
 import { DEFAULT_CONTRACT_ADDRESS, PREDICTION_MARKET_ABI } from '@/constants/config';
 import { PredictionEvent } from './useEvents';
 
@@ -85,14 +85,13 @@ export const useUserBets = () => {
             decryptionDone: eventResult.decryptionDone
           };
 
-          // For now, we'll use placeholder values for encrypted data
-          // In a real implementation, these would be encrypted handles
+          // Use actual ETH amount from contract, encrypted data shown as ***
           userBets.push({
             eventId: i,
             event,
-            shares: bet.shares || '0', // This is encrypted in the actual contract
-            isYes: bet.isYes || 'false', // This is encrypted in the actual contract  
-            amount: bet.amount || BigInt(0), // This is encrypted in the actual contract
+            shares: bet.shares || '0', // This is encrypted - will show ***
+            isYes: bet.isYes || 'false', // This is encrypted - will show ***
+            amount: bet.actualEthAmount || BigInt(0), // Use actual ETH amount (public)
             timestamp: event.startTime, // Use event start time as placeholder
             claimed: !bet.placed, // If bet.placed is false, it might have been claimed
             txHash: '0x', // We don't have this from direct contract calls

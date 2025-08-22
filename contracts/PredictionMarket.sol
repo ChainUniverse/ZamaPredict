@@ -34,6 +34,7 @@ contract PredictionMarket is SepoliaConfig {
         euint32 shares; // Encrypted number of shares purchased (for future use)
         ebool isYes; // Encrypted bet direction (true = YES, false = NO)
         bool placed; // Whether this bet has been placed (prevents double betting)
+        uint256 actualEthAmount; // Actual ETH amount spent (public for display)
     }
 
     // Storage mappings
@@ -138,7 +139,13 @@ contract PredictionMarket is SepoliaConfig {
         euint64 userAmount = FHE.asEuint64(uint64(msg.value));
 
         // Store encrypted bet details
-        bets[eventId][msg.sender] = Bet({amount: userAmount, shares: userShares, isYes: userIsYes, placed: true});
+        bets[eventId][msg.sender] = Bet({
+            amount: userAmount, 
+            shares: userShares, 
+            isYes: userIsYes, 
+            placed: true,
+            actualEthAmount: msg.value
+        });
 
         // Update totals based on encrypted bet direction without revealing which side was chosen
         euint64 addYes = FHE.select(userIsYes, userAmount, FHE.asEuint64(0)); // Add to YES if isYes=true, else 0
