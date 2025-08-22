@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { X, TrendingUp, TrendingDown, Loader2, AlertTriangle } from 'lucide-react';
-import { formatEther, parseEther } from 'viem';
+import { formatEther } from 'viem';
 import { PredictionEvent } from '@/hooks/useEvents';
 import { useContractWrite } from '@/hooks/useContract';
 
@@ -73,16 +73,6 @@ const BetModal: React.FC<BetModalProps> = ({ event, isOpen, onClose, onBetSucces
     }
   };
 
-  const getMaxPayout = () => {
-    if (!betAmount) return '0';
-    
-    try {
-      // Max payout is shares if your side wins (1 ETH per share)
-      return getEstimatedPayout();
-    } catch {
-      return '0';
-    }
-  };
 
   if (!isOpen || !event) return null;
 

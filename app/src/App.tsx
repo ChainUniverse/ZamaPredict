@@ -6,12 +6,13 @@ import { config } from './wagmi';
 import Header from './components/Header';
 import EventList from './components/EventList';
 import CreateEvent from './components/CreateEvent';
+import MyBets from './components/MyBets';
 import ErrorBoundary from './components/ErrorBoundary';
 
 const queryClient = new QueryClient();
 
 function App() {
-  const [activeTab, setActiveTab] = useState<'events' | 'create'>('events');
+  const [activeTab, setActiveTab] = useState<'events' | 'create' | 'mybets'>('events');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   return (
@@ -37,6 +38,14 @@ function App() {
                         Browse Events
                       </button>
                       <button
+                        onClick={() => setActiveTab('mybets')}
+                        className={`btn px-6 py-3 ${
+                          activeTab === 'mybets' ? 'btn-primary' : 'btn-secondary'
+                        }`}
+                      >
+                        My Bets
+                      </button>
+                      <button
                         onClick={() => setActiveTab('create')}
                         className={`btn px-6 py-3 ${
                           activeTab === 'create' ? 'btn-primary' : 'btn-secondary'
@@ -50,6 +59,8 @@ function App() {
                   <div className="animate-fade-in">
                     {activeTab === 'events' ? (
                       <EventList refreshTrigger={refreshTrigger} />
+                    ) : activeTab === 'mybets' ? (
+                      <MyBets />
                     ) : (
                       <CreateEvent onEventCreated={() => {
                         setActiveTab('events');

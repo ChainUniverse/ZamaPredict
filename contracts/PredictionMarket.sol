@@ -42,6 +42,7 @@ contract PredictionMarket is SepoliaConfig {
     // mapping(address => euint64) public rewards;                 // user => encrypted cumulative rewards
     mapping(uint256 => uint256) public requestToEvent; // decryption requestId => eventId
     mapping(uint256 => address) public requestToUser; // decryption requestId => user address
+    mapping(address => uint256[]) public userBets; // user => list of eventIds they bet on
 
     // State variables
     uint256 public eventCount; // Total number of events created
