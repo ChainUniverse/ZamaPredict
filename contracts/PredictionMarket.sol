@@ -389,7 +389,10 @@ contract PredictionMarket is SepoliaConfig {
     /// @return originalAmount The original reward amount before any withdrawal
     /// @return claimed Whether the reward has been claimed
     /// @return withdrawn Whether the reward has been withdrawn
-    function getRewardInfo(uint256 eventId, address user) external view returns (uint256 amount, uint256 originalAmount, bool claimed, bool withdrawn) {
+    function getRewardInfo(
+        uint256 eventId,
+        address user
+    ) external view returns (uint256 amount, uint256 originalAmount, bool claimed, bool withdrawn) {
         RewardInfo storage info = rewardInfo[eventId][user];
         return (info.amount, info.originalAmount, info.claimed, info.withdrawn);
     }
