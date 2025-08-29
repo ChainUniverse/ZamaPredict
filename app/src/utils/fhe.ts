@@ -59,7 +59,6 @@ export const createEncryptedBet = async (
 
 export const decryptUserData = async (
   encryptedHandle: string,
-  _dataType: 'euint32' | 'euint64' | 'ebool',
   contractAddress: string,
   walletClient: any
 ): Promise<any> => {
@@ -118,7 +117,7 @@ export const userDecryptEbool = async (
   contractAddress: string,
   walletClient: any
 ): Promise<boolean> => {
-  const result = await decryptUserData(encryptedHandle, 'ebool', contractAddress, walletClient);
+  const result = await decryptUserData(encryptedHandle, contractAddress, walletClient);
   return Boolean(result);
 };
 
@@ -127,7 +126,7 @@ export const userDecryptEuint32 = async (
   contractAddress: string,
   walletClient: any
 ): Promise<number> => {
-  const result = await decryptUserData(encryptedHandle, 'euint32', contractAddress, walletClient);
+  const result = await decryptUserData(encryptedHandle, contractAddress, walletClient);
   return Number(result);
 };
 
@@ -136,7 +135,7 @@ export const userDecryptEuint64 = async (
   contractAddress: string,
   walletClient: any
 ): Promise<bigint> => {
-  const result = await decryptUserData(encryptedHandle, 'euint64', contractAddress, walletClient);
+  const result = await decryptUserData(encryptedHandle, contractAddress, walletClient);
   return BigInt(result);
 };
 

@@ -484,7 +484,7 @@ const MyBets: React.FC = () => {
                         <LoadingSpinner />
                         <span>Checking rewards...</span>
                       </div>
-                    ) : eventRewards[bet.eventId] ? (
+                    ) : eventRewards[bet.eventId] && (eventRewards[bet.eventId].pendingAmount > 0n || eventRewards[bet.eventId].withdrawn || eventRewards[bet.eventId].claimed) ? (
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-2">

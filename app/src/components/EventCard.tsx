@@ -3,6 +3,7 @@ import { Calendar, Clock, Users, TrendingUp, CheckCircle, XCircle } from 'lucide
 import { formatEther } from 'viem';
 import { PredictionEvent } from '@/hooks/useEvents';
 import { getEventStatus, isEventActive } from '@/constants/config';
+import { useOwner } from '@/hooks/useOwner';
 
 interface EventCardProps {
   event: PredictionEvent;
@@ -11,6 +12,7 @@ interface EventCardProps {
 }
 
 const EventCard: React.FC<EventCardProps> = ({ event, onBet, onResolve }) => {
+  const { isOwner } = useOwner();
   const status = getEventStatus(event.startTime, event.endTime, event.resolved);
   const canBet = isEventActive(event.startTime, event.endTime, event.resolved);
 
@@ -45,9 +47,9 @@ const EventCard: React.FC<EventCardProps> = ({ event, onBet, onResolve }) => {
 
   return (
     <div className="card hover:border-white/20 transition-colors">
-      <div className="flex justify-between items-start mb-4">
+      <div className="flex justify-between items-start mb-3">
         <div className="flex-1">
-          <h3 className="text-lg font-semibold text-white mb-2 line-clamp-2">
+          <h3 className="text-base font-semibold text-white mb-2 line-clamp-2">
             {event.description}
           </h3>
           <div className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(status)}`}>
@@ -57,7 +59,7 @@ const EventCard: React.FC<EventCardProps> = ({ event, onBet, onResolve }) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 mb-4">
+      <div className="grid grid-cols-2 gap-3 mb-3">
         <div className="text-sm">
           <div className="flex items-center space-x-1 text-white/60 mb-1">
             <Calendar className="w-4 h-4" />
@@ -89,7 +91,7 @@ const EventCard: React.FC<EventCardProps> = ({ event, onBet, onResolve }) => {
         </div>
       </div> */}
 
-      <div className="grid grid-cols-2 gap-4 mb-4">
+      <div className="grid grid-cols-2 gap-3 mb-3">
         <div className="text-sm">
           <div className="flex items-center space-x-1 text-white/60 mb-1">
             <span className={event.resolved && event.decryptionDone ? "text-green-400" : "text-yellow-400"}>
@@ -114,7 +116,7 @@ const EventCard: React.FC<EventCardProps> = ({ event, onBet, onResolve }) => {
         </div>
       </div>
 
-      <div className="flex items-center justify-between text-sm text-white/60 mb-4">
+      <div className="flex items-center justify-between text-xs text-white/60 mb-3">
         <div className="flex items-center space-x-1">
           <Users className="w-4 h-4" />
           <span>Total Pool: {formatEther(event.totalEth)} ETH</span>
@@ -126,10 +128,10 @@ const EventCard: React.FC<EventCardProps> = ({ event, onBet, onResolve }) => {
       </div>
 
       {event.resolved && (
-        <div className="mb-4 p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
+        <div className="mb-3 p-2 rounded-lg bg-purple-500/10 border border-purple-500/20">
           <div className="flex items-center space-x-2">
-            <CheckCircle className="w-5 h-5 text-purple-400" />
-            <span className="text-purple-200 font-medium">
+            <CheckCircle className="w-4 h-4 text-purple-400" />
+            <span className="text-purple-200 font-medium text-sm">
               Resolved Result: {event.outcome ? 'YES' : 'NO'} won
             </span>
           </div>
@@ -156,7 +158,7 @@ const EventCard: React.FC<EventCardProps> = ({ event, onBet, onResolve }) => {
           <div className="text-center text-yellow-200 text-sm">
             Waiting for resolution...
           </div>
-          {onResolve && (
+          {isOwner && onResolve && (
             <button
               onClick={() => onResolve(event.id)}
               className="btn btn-secondary w-full flex items-center justify-center space-x-2"
@@ -164,6 +166,11 @@ const EventCard: React.FC<EventCardProps> = ({ event, onBet, onResolve }) => {
               <CheckCircle className="w-4 h-4" />
               <span>Resolve Event</span>
             </button>
+          )}
+          {!isOwner && (
+            <div className="text-center text-gray-400 text-xs">
+              Only the contract owner can resolve events
+            </div>
           )}
         </div>
       )}

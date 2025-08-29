@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useAccount, useWalletClient, usePublicClient } from 'wagmi';
 import { parseEther, getContract } from 'viem';
-import { Plus, Calendar, DollarSign, Shield, AlertTriangle } from 'lucide-react';
+import { Plus, Calendar, DollarSign, Shield, AlertTriangle, Lock } from 'lucide-react';
 import { DEFAULT_CONTRACT_ADDRESS, PREDICTION_MARKET_ABI } from '@/constants/config';
+import { useOwner } from '@/hooks/useOwner';
 
 interface CreateEventProps {
   onEventCreated: () => void;
@@ -12,6 +13,7 @@ const CreateEvent: React.FC<CreateEventProps> = ({ onEventCreated }) => {
   const { isConnected } = useAccount();
   const { data: walletClient } = useWalletClient();
   const publicClient = usePublicClient();
+  const { isOwner, ownerAddress, isLoading: ownerLoading } = useOwner();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [formData, setFormData] = useState({
@@ -108,6 +110,44 @@ const CreateEvent: React.FC<CreateEventProps> = ({ onEventCreated }) => {
         <p className="text-white/60">
           Please connect your wallet to create prediction events.
         </p>
+      </div>
+    );
+  }
+
+  if (ownerLoading) {
+    return (
+      <div className="card text-center py-12">
+        <div className="loading-spinner mx-auto mb-4" />
+        <h3 className="text-xl font-semibold text-white mb-2">Loading...</h3>
+        <p className="text-white/60">
+          Checking permissions...
+        </p>
+      </div>
+    );
+  }
+
+  if (!isOwner) {
+    return (
+      <div className="card text-center py-12">
+        <Lock className="w-16 h-16 text-red-400 mx-auto mb-4" />
+        <h3 className="text-xl font-semibold text-white mb-2">Access Denied</h3>
+        <p className="text-white/60 mb-4">
+          Only the contract owner can create prediction events.
+        </p>
+        <div className="bg-red-50/10 border border-red-500/20 rounded-lg p-4 text-left">
+          <div className="flex items-start space-x-3">
+            <AlertTriangle className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
+            <div>
+              <h4 className="font-semibold text-red-200 mb-1">Permission Required</h4>
+              <p className="text-sm text-red-100/80">
+                Contract Owner: <span className="font-mono">{ownerAddress}</span>
+              </p>
+              <p className="text-sm text-red-100/80 mt-1">
+                Please connect with the owner wallet to create events.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
