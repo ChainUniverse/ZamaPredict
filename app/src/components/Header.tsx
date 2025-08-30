@@ -1,8 +1,19 @@
 import React from 'react';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { Shield, Zap } from 'lucide-react';
+import { Shield, Zap, AlertCircle } from 'lucide-react';
+import { useFHE } from '@/utils/fhe';
 
 const Header: React.FC = () => {
+  const { isInitialized, isInitializing, error, initialize } = useFHE();
+  
+  const handleInitializeFHE = async () => {
+    try {
+      await initialize();
+    } catch (err) {
+      console.error('Failed to initialize FHE:', err);
+    }
+  };
+  
   return (
     <header className="bg-black/20 backdrop-blur-md border-b border-white/10 sticky top-0 z-50">
       <div className="container mx-auto px-4 py-4">
@@ -19,11 +30,48 @@ const Header: React.FC = () => {
           </div>
           
           <div className="flex items-center space-x-4">
-            <div className="hidden md:flex items-center space-x-2 text-sm text-white/80">
+            <div className="flex items-center space-x-3 text-sm">
               <div className="flex items-center space-x-1">
-                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                <span>FHE Enabled</span>
+                {error ? (
+                  <>
+                    <AlertCircle className="w-3 h-3 text-red-400" />
+                    <span className="text-red-400">FHE Error</span>
+                  </>
+                ) : isInitialized ? (
+                  <>
+                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                    <span className="text-green-400">FHE Ready</span>
+                  </>
+                ) : isInitializing ? (
+                  <>
+                    <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
+                    <span className="text-yellow-400">FHE Loading...</span>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                    <span className="text-gray-400">FHE Not Ready</span>
+                  </>
+                )}
               </div>
+              
+              {!isInitialized && !isInitializing && (
+                <button
+                  onClick={handleInitializeFHE}
+                  className="px-3 py-1 rounded-md bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors"
+                >
+                  Initialize FHE
+                </button>
+              )}
+              
+              {error && !isInitializing && (
+                <button
+                  onClick={handleInitializeFHE}
+                  className="px-3 py-1 rounded-md bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors"
+                >
+                  Retry Init
+                </button>
+              )}
             </div>
             
             <ConnectButton 

@@ -16,12 +16,33 @@ const CreateEvent: React.FC<CreateEventProps> = ({ onEventCreated }) => {
   const { isOwner, ownerAddress, isLoading: ownerLoading } = useOwner();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
-  const [formData, setFormData] = useState({
-    description: '',
-    startTime: '',
-    endTime: '',
-    yesPrice: '0.1',
-    noPrice: '0.1'
+  
+  // Function to get default datetime values
+  const getDefaultDateTimes = () => {
+    const now = new Date();
+    const startTime = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour from now
+    const endTime = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 hours from now
+    
+    // Format for datetime-local input (YYYY-MM-DDTHH:MM)
+    const formatDateTime = (date: Date) => {
+      return date.toISOString().slice(0, 16);
+    };
+    
+    return {
+      startTime: formatDateTime(startTime),
+      endTime: formatDateTime(endTime)
+    };
+  };
+  
+  const [formData, setFormData] = useState(() => {
+    const defaultTimes = getDefaultDateTimes();
+    return {
+      description: '',
+      startTime: defaultTimes.startTime,
+      endTime: defaultTimes.endTime,
+      yesPrice: '0.001',
+      noPrice: '0.001'
+    };
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -84,11 +105,12 @@ const CreateEvent: React.FC<CreateEventProps> = ({ onEventCreated }) => {
       const receipt = await publicClient.waitForTransactionReceipt({ hash });
       console.log('Transaction confirmed:', receipt);
       
-      // Reset form
+      // Reset form with new default times
+      const defaultTimes = getDefaultDateTimes();
       setFormData({
         description: '',
-        startTime: '',
-        endTime: '',
+        startTime: defaultTimes.startTime,
+        endTime: defaultTimes.endTime,
         yesPrice: '0.1',
         noPrice: '0.1'
       });
@@ -202,6 +224,11 @@ const CreateEvent: React.FC<CreateEventProps> = ({ onEventCreated }) => {
                   value={formData.startTime}
                   onChange={handleInputChange}
                   className="input pl-10"
+                  lang="en-US"
+                  data-locale="en-US"
+                  style={{ 
+                    fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+                  }}
                   required
                 />
               </div>
@@ -216,6 +243,11 @@ const CreateEvent: React.FC<CreateEventProps> = ({ onEventCreated }) => {
                   value={formData.endTime}
                   onChange={handleInputChange}
                   className="input pl-10"
+                  lang="en-US"
+                  data-locale="en-US"
+                  style={{ 
+                    fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+                  }}
                   required
                 />
               </div>
@@ -224,7 +256,7 @@ const CreateEvent: React.FC<CreateEventProps> = ({ onEventCreated }) => {
           
           <div className="grid md:grid-cols-2 gap-4">
             <div>
-              <label className="label">YES Bet Price (ETH)</label>
+              <label className="label">YES Bet Init Price (ETH)</label>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
@@ -235,13 +267,13 @@ const CreateEvent: React.FC<CreateEventProps> = ({ onEventCreated }) => {
                   step="0.00001"
                   min="0.0001"
                   className="input pl-10"
-                  placeholder="0.1"
+                  placeholder="0.001"
                   required
                 />
               </div>
             </div>
             <div>
-              <label className="label">NO Bet Price (ETH)</label>
+              <label className="label">NO Bet Init Price (ETH)</label>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
@@ -252,7 +284,7 @@ const CreateEvent: React.FC<CreateEventProps> = ({ onEventCreated }) => {
                   step="0.00001"
                   min="0.0001"
                   className="input pl-10"
-                  placeholder="0.1"
+                  placeholder="0.001"
                   required
                 />
               </div>

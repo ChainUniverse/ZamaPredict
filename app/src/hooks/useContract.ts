@@ -10,7 +10,7 @@ export const useContractWrite = () => {
   const { data: walletClient } = useWalletClient();
   const { address } = useAccount();
   const { writeContractAsync } = useWriteContract();
-  const { createEncryptedInput, instance } = useFHE();
+  const { instance } = useFHE();
 
   const convertHandle = (handle: any): string => {
     let formattedHandle: string;
@@ -30,8 +30,21 @@ export const useContractWrite = () => {
     isYes: boolean,
     betAmount: bigint
   ) => {
-    if (!walletClient || !address || !instance) {
-      throw new Error('Wallet not connected or FHE not initialized');
+    if (!walletClient || !address) {
+      throw new Error('Wallet not connected');
+    }
+    
+    // Ensure FHE instance is available
+    let fheInstance = instance;
+    if (!fheInstance) {
+      console.log('FHE instance not ready, attempting to get global instance...');
+      try {
+        const { getFHEInstance } = await import('@/utils/fhe');
+        fheInstance = getFHEInstance();
+      } catch (error) {
+        console.error('Failed to get FHE instance:', error);
+        throw new Error('FHE not initialized. Please click the "Initialize FHE" button in the header first.');
+      }
     }
     console.log('Placing bet with encrypted input:', {
       eventId,
@@ -44,7 +57,7 @@ export const useContractWrite = () => {
 
     try {
       // Create encrypted input for the bet
-      const input = createEncryptedInput(DEFAULT_CONTRACT_ADDRESS, address);
+      const input = fheInstance.createEncryptedInput(DEFAULT_CONTRACT_ADDRESS, address);
 
       // Add encrypted values - shares (as 32-bit) and direction
       input.add32(Number(shares));

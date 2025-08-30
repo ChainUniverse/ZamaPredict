@@ -15,8 +15,7 @@ export const initializeFHE = async (): Promise<FhevmInstance> => {
 
     // Create FHE instance with Sepolia config
     const config = {
-      ...SepoliaConfig,
-      network: window.ethereum, // Use MetaMask provider
+      ...SepoliaConfig
     };
 
     fheInstance = await createInstance(config);
@@ -213,39 +212,63 @@ export const formatEncryptedValue = (value: any, type: 'amount' | 'shares' | 'di
 
 // React hook for FHE operations
 export const useFHE = () => {
-  const [instance, setInstance] = useState<FhevmInstance | null>(null);
-  const [isInitialized, setIsInitialized] = useState(false);
+  const [instance, setInstance] = useState<FhevmInstance | null>(fheInstance);
+  const [isInitialized, setIsInitialized] = useState(!!fheInstance);
+  const [isInitializing, setIsInitializing] = useState(false);
   const [error, setError] = useState<string>('');
 
   const initialize = async () => {
-    if (instance) return instance;
-
-    try {
-      const fheInstance = await initializeFHE();
+    // Check if we already have a global instance
+    if (fheInstance) {
       setInstance(fheInstance);
       setIsInitialized(true);
       return fheInstance;
+    }
+
+    // Check if the current instance is already set
+    if (instance) return instance;
+
+    if (isInitializing) {
+      throw new Error('FHE is already initializing');
+    }
+
+    try {
+      setIsInitializing(true);
+      setError('');
+      console.log('Starting FHE initialization...');
+
+      const newInstance = await initializeFHE();
+      setInstance(newInstance);
+      setIsInitialized(true);
+      console.log('FHE initialization completed successfully');
+      return newInstance;
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to initialize FHE';
       setError(errorMessage);
+      console.error('FHE initialization error:', err);
       throw new Error(errorMessage);
+    } finally {
+      setIsInitializing(false);
     }
   };
 
   const createEncryptedInput = (contractAddress: string, userAddress: string) => {
-    if (!instance) {
-      throw new Error('FHE not initialized');
+    const currentInstance = instance || fheInstance;
+    if (!currentInstance) {
+      throw new Error('FHE not initialized. Please click the "Initialize FHE" button first.');
     }
-    return instance.createEncryptedInput(contractAddress, userAddress);
+    return currentInstance.createEncryptedInput(contractAddress, userAddress);
   };
 
-  useEffect(() => {
-    initialize();
-  }, []);
+  // 移除自动初始化，现在需要手动调用
+  // useEffect(() => {
+  //   initialize().catch(console.error);
+  // }, []);
 
   return {
-    instance,
-    isInitialized,
+    instance: instance || fheInstance,
+    isInitialized: isInitialized || !!fheInstance,
+    isInitializing,
     error,
     initialize,
     createEncryptedInput

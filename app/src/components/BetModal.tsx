@@ -3,6 +3,7 @@ import { X, TrendingUp, TrendingDown, Loader2, AlertTriangle } from 'lucide-reac
 import { formatEther } from 'viem';
 import { PredictionEvent } from '@/hooks/useEvents';
 import { useContractWrite } from '@/hooks/useContract';
+import { useFHE } from '@/utils/fhe';
 
 interface BetModalProps {
   event: PredictionEvent | null;
@@ -17,6 +18,7 @@ const BetModal: React.FC<BetModalProps> = ({ event, isOpen, onClose, onBetSucces
   const [isPlacingBet, setIsPlacingBet] = useState(false);
 
   const { placeBet } = useContractWrite();
+  const { isInitialized, isInitializing, error: fheError } = useFHE();
 
   const resetForm = useCallback(() => {
     setSelectedDirection(null);
@@ -177,15 +179,29 @@ const BetModal: React.FC<BetModalProps> = ({ event, isOpen, onClose, onBetSucces
             </div>
           )}
 
-          {/* Privacy Notice */}
-          <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
-            <div className="flex items-start space-x-2">
-              <AlertTriangle className="w-4 h-4 text-purple-400 mt-0.5 flex-shrink-0" />
-              <div className="text-sm text-purple-200">
-                Your bet amount and direction will be encrypted and remain private until the event is resolved.
+          {/* FHE Status Notice */}
+          {!isInitialized && (
+            <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+              <div className="flex items-start space-x-2">
+                <AlertTriangle className="w-4 h-4 text-yellow-400 mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-yellow-200">
+                  Please initialize FHE encryption first by clicking the "Initialize FHE" button in the header.
+                </div>
               </div>
             </div>
-          </div>
+          )}
+
+          {/* Privacy Notice */}
+          {isInitialized && (
+            <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
+              <div className="flex items-start space-x-2">
+                <AlertTriangle className="w-4 h-4 text-purple-400 mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-purple-200">
+                  Your bet amount and direction will be encrypted and remain private until the event is resolved.
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -198,7 +214,7 @@ const BetModal: React.FC<BetModalProps> = ({ event, isOpen, onClose, onBetSucces
           </button>
           <button
             onClick={handlePlaceBet}
-            disabled={!selectedDirection || !betAmount || isPlacingBet || parseFloat(betAmount) <= 0}
+            disabled={!selectedDirection || !betAmount || isPlacingBet || parseFloat(betAmount) <= 0 || !isInitialized || !!fheError || isInitializing}
             className="flex-1 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2"
           >
             {isPlacingBet ? (
@@ -206,6 +222,15 @@ const BetModal: React.FC<BetModalProps> = ({ event, isOpen, onClose, onBetSucces
                 <Loader2 className="w-4 h-4 animate-spin" />
                 <span>Placing Bet...</span>
               </>
+            ) : isInitializing ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>FHE Loading...</span>
+              </>
+            ) : !isInitialized ? (
+              <span>Initialize FHE First</span>
+            ) : fheError ? (
+              <span>FHE Error</span>
             ) : (
               <span>Place Bet</span>
             )}
