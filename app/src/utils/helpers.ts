@@ -1,6 +1,6 @@
 import { formatDistanceToNow, format } from 'date-fns';
 import { ERROR_MESSAGES } from '@/constants/config';
-import { EventStatus } from '@/types';
+import { EventStatus } from '@/type';
 
 export const formatEther = (value: bigint, decimals: number = 4): string => {
   const eth = Number(value) / 1e18;

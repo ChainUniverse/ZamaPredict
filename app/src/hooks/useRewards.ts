@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { usePublicClient, useAccount } from 'wagmi';
 import { getContract } from 'viem';
 import { DEFAULT_CONTRACT_ADDRESS, PREDICTION_MARKET_ABI } from '@/constants/config';
-import { UserReward, RewardInfo } from '@/types';
+import { UserReward, RewardInfo } from '@/type';
 
 export const useRewards = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -64,11 +64,11 @@ export const useRewards = () => {
       });
 
       const result = await contract.read.getRewardInfo([BigInt(eventId), address]) as [bigint, bigint, boolean, boolean];
-      return { 
-        amount: result[0], 
+      return {
+        amount: result[0],
         originalAmount: result[1],
-        claimed: result[2], 
-        withdrawn: result[3] 
+        claimed: result[2],
+        withdrawn: result[3]
       };
     } catch (err: any) {
       console.error('Error fetching reward info:', err);
