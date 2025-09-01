@@ -1,4 +1,4 @@
-import { NetworkConfig } from '@/types';
+import { NetworkConfig } from '@/type';
 
 // Zama FHE Configuration for Sepolia testnet
 export const SEPOLIA_CONFIG = {

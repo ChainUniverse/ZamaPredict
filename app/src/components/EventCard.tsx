@@ -132,7 +132,7 @@ const EventCard: React.FC<EventCardProps> = ({ event, onBet, onResolve }) => {
           <div className="flex items-center space-x-2">
             <CheckCircle className="w-4 h-4 text-purple-400" />
             <span className="text-purple-200 font-medium text-sm">
-              Resolved Result: {event.outcome ? 'YES' : 'NO'} won
+              Result: {event.outcome ? 'YES' : 'NO'} won
             </span>
           </div>
         </div>
@@ -156,7 +156,7 @@ const EventCard: React.FC<EventCardProps> = ({ event, onBet, onResolve }) => {
       {status === 'ended' && !event.resolved && (
         <div className="space-y-2">
           <div className="text-center text-yellow-200 text-sm">
-            Waiting for resolution...
+            Waiting for reveal result...
           </div>
           {isOwner && onResolve && (
             <button

@@ -7,7 +7,7 @@ import { useContractWrite } from '@/hooks/useContract';
 import { useRewards } from '@/hooks/useRewards';
 import { userDecryptEuint32, userDecryptEbool } from '@/utils/fhe';
 import { DEFAULT_CONTRACT_ADDRESS } from '@/constants/config';
-import { EventReward } from '@/types';
+import { EventReward } from '@/type';
 import LoadingSpinner from './LoadingSpinner';
 
 interface DecryptedData {
